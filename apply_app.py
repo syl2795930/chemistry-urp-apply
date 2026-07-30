@@ -47,14 +47,17 @@ def _is_valid_email(v: str) -> bool:
 def page_home():
     p = config.PROGRAM
     theme.hero(p["name"], p["intro"])
+    theme.hero_cta_wrap_start()
+    if st.button("지원서 작성하기 →", key="hero_cta", type="primary"):
+        st.session_state["view"] = "apply"
+        st.rerun()
+    theme.hero_cta_wrap_end()
 
     theme.info_cards([
         ("참여기간", p["period"], p.get("period_note")),
         ("접수마감", p["deadline"], p.get("deadline_note")),
         ("합격자 발표", p["announce"], p.get("announce_note")),
     ])
-
-    st.info("👉 위쪽 **[지원하기]** 탭을 눌러 지원서를 작성해주세요.")
 
     theme.notice_board(config.NOTICES, p)
     theme.program_history_table(config.PAST_PROGRAMS)
@@ -315,13 +318,18 @@ def page_apply():
 
 
 # ══════════════════════════ 라우팅 (관리자 탭 없음) ══════════════════════════
+if "view" not in st.session_state:
+    st.session_state["view"] = "home"
+
 theme.topbar()
-tab_home, tab_apply, tab_labs, tab_faq = st.tabs(["홈", "  지원하기  ", "연구실", "FAQ"])
-with tab_home:
-    page_home()
-with tab_apply:
+theme.nav(active_key=st.session_state["view"])
+
+view = st.session_state["view"]
+if view == "apply":
     page_apply()
-with tab_labs:
+elif view == "labs":
     page_labs()
-with tab_faq:
+elif view == "faq":
     page_faq()
+else:
+    page_home()
