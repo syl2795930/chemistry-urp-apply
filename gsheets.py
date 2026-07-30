@@ -2,6 +2,10 @@
 """
 구글시트(지원자 데이터 저장) + 구글드라이브(첨부파일 저장) 연동.
 
+- 구글시트는 서비스 계정으로 접근합니다. (시트는 서비스 계정으로도 문제없이 씁니다)
+- 구글드라이브 업로드는 "서비스 계정 저장용량 0GB" 문제 때문에, 담당자님의 실제 구글 계정으로
+  로그인(OAuth)해서 그 계정 소유로 업로드하는 방식을 씁니다. (get_refresh_token.py 참고)
+
 st.secrets 에 아래 형태로 값이 있어야 합니다. (SETUP_GUIDE.md 참고)
 
 [gcp_service_account]
@@ -13,6 +17,11 @@ client_email = "xxx@xxx.iam.gserviceaccount.com"
 client_id = "..."
 token_uri = "https://oauth2.googleapis.com/token"
 
+[google_oauth]
+client_id = "OAuth 클라이언트 ID (Desktop app)"
+client_secret = "OAuth 클라이언트 보안 비밀번호"
+refresh_token = "get_refresh_token.py 실행 후 얻은 값"
+
 [app]
 sheet_id = "구글시트_ID"
 drive_folder_id = "구글드라이브_루트폴더_ID"
@@ -23,12 +32,17 @@ import pandas as pd
 import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
+from google.oauth2.credentials import Credentials as UserCredentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive",
+]
+
+# 드라이브는 "이 앱이 만든 파일에만 접근" 범위로 최소화 (내 드라이브 전체 접근 아님)
+DRIVE_SCOPES = [
+    "https://www.googleapis.com/auth/drive.file",
 ]
 
 WORKSHEET_NAME = "지원자"
@@ -50,6 +64,7 @@ HEADERS = [
 
 @st.cache_resource(show_spinner=False)
 def _get_creds():
+    """구글시트 접근용 (서비스 계정)."""
     info = dict(st.secrets["gcp_service_account"])
     return Credentials.from_service_account_info(info, scopes=SCOPES)
 
@@ -60,8 +75,23 @@ def _get_gc():
 
 
 @st.cache_resource(show_spinner=False)
+def _get_drive_creds():
+    """구글드라이브 접근용 (담당자 개인 계정, OAuth refresh token 사용)."""
+    o = st.secrets["google_oauth"]
+    return UserCredentials(
+        token=None,
+        refresh_token=o["refresh_token"],
+        client_id=o["client_id"],
+        client_secret=o["client_secret"],
+        token_uri="https://oauth2.googleapis.com/token",
+        scopes=DRIVE_SCOPES,
+    )
+
+
+@st.cache_resource(show_spinner=False)
 def _get_drive():
-    return build("drive", "v3", credentials=_get_creds())
+    return build("drive", "v3", credentials=_get_drive_creds())
+
 
 
 def _get_worksheet():
@@ -139,12 +169,15 @@ def _find_or_create_subfolder(name: str, parent_id: str) -> str:
     drive = _get_drive()
     q = (f"name = '{name}' and mimeType = 'application/vnd.google-apps.folder' "
          f"and '{parent_id}' in parents and trashed = false")
-    res = drive.files().list(q=q, fields="files(id, name)").execute()
+    res = drive.files().list(
+        q=q, fields="files(id, name)",
+        supportsAllDrives=True, includeItemsFromAllDrives=True, corpora="allDrives"
+    ).execute()
     files = res.get("files", [])
     if files:
         return files[0]["id"]
     meta = {"name": name, "mimeType": "application/vnd.google-apps.folder", "parents": [parent_id]}
-    folder = drive.files().create(body=meta, fields="id").execute()
+    folder = drive.files().create(body=meta, fields="id", supportsAllDrives=True).execute()
     return folder["id"]
 
 
@@ -157,7 +190,7 @@ def upload_applicant_file(receipt_no: str, applicant_name: str, filename: str,
     folder_id = _find_or_create_subfolder(folder_name, root_id)
     media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=mimetype, resumable=False)
     meta = {"name": filename, "parents": [folder_id]}
-    f = drive.files().create(body=meta, media_body=media, fields="id, webViewLink").execute()
+    f = drive.files().create(body=meta, media_body=media, fields="id, webViewLink", supportsAllDrives=True).execute()
     return f.get("webViewLink", "")
 
 
@@ -167,7 +200,7 @@ def download_file_bytes_from_link(view_link: str) -> bytes:
     file_id = view_link
     if "/d/" in view_link:
         file_id = view_link.split("/d/")[1].split("/")[0]
-    request = drive.files().get_media(fileId=file_id)
+    request = drive.files().get_media(fileId=file_id, supportsAllDrives=True)
     buf = io.BytesIO()
     from googleapiclient.http import MediaIoBaseDownload
     downloader = MediaIoBaseDownload(buf, request)
@@ -182,7 +215,7 @@ def get_file_name_from_link(view_link: str) -> str:
     file_id = view_link
     if "/d/" in view_link:
         file_id = view_link.split("/d/")[1].split("/")[0]
-    meta = drive.files().get(fileId=file_id, fields="name").execute()
+    meta = drive.files().get(fileId=file_id, fields="name", supportsAllDrives=True).execute()
     return meta.get("name", "file")
 
 
@@ -195,7 +228,10 @@ def find_applicant_folder_id(receipt_no: str, applicant_name: str):
     folder_name = f"{receipt_no}_{applicant_name}"
     q = (f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' "
          f"and '{root_id}' in parents and trashed = false")
-    res = drive.files().list(q=q, fields="files(id, name)").execute()
+    res = drive.files().list(
+        q=q, fields="files(id, name)",
+        supportsAllDrives=True, includeItemsFromAllDrives=True, corpora="allDrives"
+    ).execute()
     files = res.get("files", [])
     return files[0]["id"] if files else None
 
@@ -205,7 +241,7 @@ def trash_applicant_folder(receipt_no: str, applicant_name: str):
     folder_id = find_applicant_folder_id(receipt_no, applicant_name)
     if folder_id:
         drive = _get_drive()
-        drive.files().update(fileId=folder_id, body={"trashed": True}).execute()
+        drive.files().update(fileId=folder_id, body={"trashed": True}, supportsAllDrives=True).execute()
 
 
 def delete_applicant_row(receipt_no: str):
