@@ -48,35 +48,16 @@ def page_home():
     p = config.PROGRAM
     theme.hero(p["name"], p["intro"])
 
-    c1, c2, c3 = st.columns(3)
-    for col, label, val, note in [
-        (c1, "참여기간", p["period"], p.get("period_note")),
-        (c2, "접수마감", p["deadline"], p.get("deadline_note")),
-        (c3, "합격자 발표", p["announce"], p.get("announce_note")),
-    ]:
-        with col:
-            st.metric(label, val)
-            if note:
-                st.caption(note)
+    theme.info_cards([
+        ("참여기간", p["period"], p.get("period_note")),
+        ("접수마감", p["deadline"], p.get("deadline_note")),
+        ("합격자 발표", p["announce"], p.get("announce_note")),
+    ])
 
     st.info("👉 위쪽 **[지원하기]** 탭을 눌러 지원서를 작성해주세요.")
 
-    st.divider()
-    st.subheader("📢 공지사항")
-    for n in config.NOTICES:
-        body = n["body"]
-        if body is None:
-            body = (f"{p['name']} 참여기간: {p['period']} / 접수마감: {p['deadline']} "
-                    f"({p.get('deadline_note','')})")
-        with st.expander(f"[{n['status']}] {n['title']}  —  {n['date']}"):
-            st.write(body)
-
-    st.divider()
-    st.subheader("🗂 지난 프로그램 이력")
-    st.dataframe(
-        [{"프로그램": h["name"], "기간": h["period"], "인원": h["count"]} for h in config.PAST_PROGRAMS],
-        use_container_width=True, hide_index=True,
-    )
+    theme.notice_board(config.NOTICES, p)
+    theme.program_history_table(config.PAST_PROGRAMS)
 
     st.caption(
         f"관련 사이트: [화학과 홈페이지]({config.SITE_LINKS.get('dept','')}) · "
@@ -84,53 +65,36 @@ def page_home():
     )
 
 
-
-
 # ══════════════════════════ 연구실 소개 ══════════════════════════
 def page_labs():
-    st.header("🔬 참여 연구실 안내")
-    st.caption("희망지도교수 1·2지망을 정하실 때 참고해주세요.")
-    for field, labs in scoring.LABS.items():
-        st.subheader(field)
-        for lab in labs:
-            c1, c2 = st.columns([3, 1])
-            with c1:
-                st.markdown(f"**{lab['name']} 교수님** — {lab['lab']}")
-            with c2:
-                if lab.get("url"):
-                    st.link_button("연구실 홈페이지", lab["url"], use_container_width=True)
-        st.divider()
+    theme.labs_grid(scoring.LABS)
 
 
 # ══════════════════════════ FAQ ══════════════════════════
 def page_faq():
-    st.header("❓ 자주 묻는 질문")
-    for item in config.FAQ_ITEMS:
-        with st.expander(item["q"]):
-            st.write(item["a"])
+    st.markdown("## FAQ · Q&A")
+    st.caption("자주 묻는 질문과, 지원자분들이 남긴 문의를 한 페이지에서 확인하실 수 있어요.")
 
-    st.divider()
-    st.subheader("💬 문의하기")
-    st.caption("자주 묻는 질문에 없는 내용은 아래에 남겨주세요. 답변이 등록되면 이 페이지에서 확인하실 수 있습니다.")
+    theme.faq_accordion(config.FAQ_ITEMS)
 
-    with st.form("qna_form", clear_on_submit=True):
-        q_name = st.text_input("이름 (선택, 비워두면 '익명'으로 표시됩니다)")
-        q_pw = st.text_input("비밀번호 (본인 확인용, 4자리 이상 권장)", type="password")
-        q_text = st.text_area("문의 내용 *", height=120)
-        q_submitted = st.form_submit_button("문의 등록", use_container_width=True)
+    st.markdown("**1:1 문의 게시판**")
+    with st.expander("✍️ 문의 작성하기"):
+        with st.form("qna_form", clear_on_submit=True):
+            q_name = st.text_input("이름 (선택, 비워두면 '익명'으로 표시됩니다)")
+            q_pw = st.text_input("비밀번호 (4자리 이상, 나중에 본인 글 확인용)", type="password")
+            q_text = st.text_area("문의 내용 *", height=120)
+            q_submitted = st.form_submit_button("문의 등록", use_container_width=True)
 
-    if q_submitted:
-        if not q_text.strip():
-            st.error("문의 내용을 입력해주세요.")
-        elif not q_pw.strip():
-            st.error("비밀번호를 입력해주세요.")
-        else:
-            gsheets.append_question(q_name.strip(), q_pw.strip(), q_text.strip())
-            st.success("문의가 등록되었습니다.")
-            st.rerun()
+        if q_submitted:
+            if not q_text.strip():
+                st.error("문의 내용을 입력해주세요.")
+            elif len(q_pw.strip()) < 4:
+                st.error("비밀번호를 4자리 이상 입력해주세요.")
+            else:
+                gsheets.append_question(q_name.strip(), q_pw.strip(), q_text.strip())
+                st.success("문의가 등록되었습니다.")
+                st.rerun()
 
-    st.divider()
-    st.subheader("📋 문의 내역")
     try:
         qdf = gsheets.read_all_questions()
     except Exception:
@@ -140,17 +104,29 @@ def page_faq():
         st.info("등록된 문의가 없습니다.")
     else:
         for _, r in qdf.sort_values("등록일시", ascending=False).iterrows():
+            qid = str(r.get("id"))
             status = "✅ 답변완료" if str(r.get("답변여부")) == "Y" else "⏳ 답변대기"
+            unlock_key = f"qna_unlocked_{qid}"
             with st.expander(f"[{status}] {r.get('이름') or '익명'} — {r.get('등록일시')}"):
-                st.write(r.get("질문", ""))
-                if str(r.get("답변여부")) == "Y":
-                    st.markdown("**➡ 답변**")
-                    st.write(r.get("답변", ""))
+                if st.session_state.get(unlock_key):
+                    st.write(r.get("질문", ""))
+                    if str(r.get("답변여부")) == "Y":
+                        st.markdown("**➡ 답변**")
+                        st.write(r.get("답변", ""))
+                else:
+                    st.caption("본인이 남긴 문의인 경우, 등록하신 비밀번호를 입력하면 내용을 볼 수 있어요.")
+                    pw_try = st.text_input("비밀번호", type="password", key=f"pw_try_{qid}")
+                    if st.button("확인", key=f"pw_check_{qid}"):
+                        if pw_try == str(r.get("비밀번호", "")):
+                            st.session_state[unlock_key] = True
+                            st.rerun()
+                        else:
+                            st.error("비밀번호가 일치하지 않습니다.")
 
 
 # ══════════════════════════ 지원하기 ══════════════════════════
 def page_apply():
-    st.header("📝 지원서 작성")
+    st.header("지원서 작성")
 
     if st.session_state.get("submitted_ok"):
         st.success("지원이 정상적으로 완료되었습니다.")
@@ -339,6 +315,7 @@ def page_apply():
 
 
 # ══════════════════════════ 라우팅 (관리자 탭 없음) ══════════════════════════
+theme.topbar()
 tab_home, tab_apply, tab_labs, tab_faq = st.tabs(["홈", "  지원하기  ", "연구실", "FAQ"])
 with tab_home:
     page_home()
