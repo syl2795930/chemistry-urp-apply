@@ -168,18 +168,22 @@ def top_tabs():
 
 
 def info_cards(items):
-    """참여기간/접수마감/합격자발표 같은 작은 정보 카드들을 나란히."""
+    """참여기간/접수마감/합격자발표 같은 작은 정보 카드들을 나란히.
+    카드마다 값 길이가 달라도(예: 모집대상처럼 두 줄인 경우) 높이가 들쭉날쭉해지지 않도록
+    최소 높이를 주고, note가 없는 카드도 자리(줄 높이)는 항상 확보해서 정렬을 맞춘다."""
     b = config.BRAND
     cols = st.columns(len(items))
     for col, (label, value, note) in zip(cols, items):
-        note_html = f'<div style="font-size:11px;color:{b["primary"]};margin-top:4px;">{note}</div>' if note else ""
+        note_html = f'{note}' if note else "&nbsp;"
         with col:
             _render(
                 '<div style="background:#FFFFFF;border:1px solid '
-                f'{b["primary_light"]};border-radius:8px;padding:14px 16px;">'
+                f'{b["primary_light"]};border-radius:8px;padding:14px 16px;'
+                'min-height:108px;display:flex;flex-direction:column;justify-content:flex-start;">'
                 f'<div style="font-size:12px;color:#888;margin-bottom:4px;">{label}</div>'
-                f'<div style="font-size:15px;font-weight:600;color:#222;line-height:1.5;">{value}</div>'
-                f'{note_html}</div>'
+                f'<div style="font-size:15px;font-weight:600;color:#222;line-height:1.5;flex:1;">{value}</div>'
+                f'<div style="font-size:11px;color:{b["primary"]};margin-top:4px;">{note_html}</div>'
+                '</div>'
             )
 
 
