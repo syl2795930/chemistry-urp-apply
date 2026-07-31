@@ -37,7 +37,7 @@ NOTICES = [
     },
     {
         "status": "예정",
-        "title": f"[예정] {PROGRAM['name']} 대학생 모집 ({PROGRAM['short_name']})",
+        "title": f"{PROGRAM['name']} 대학생 모집 ({PROGRAM['short_name']})",
         "date": "일정 추후 확정",
         "body": None,  # None이면 위 PROGRAM 정보를 이용해 상세 공지를 자동 생성
     },
@@ -62,6 +62,16 @@ PAST_PROGRAMS = [
 SITE_LINKS = {
     "dept": "https://chem.postech.ac.kr/",
     "grad_admission": "https://adm-g.postech.ac.kr/",
+}
+
+# 홈 화면에 상시 노출되는 상세 모집 공고. period/deadline/announce는 위 PROGRAM 값을 그대로 씁니다.
+NOTICE_DETAIL = {
+    "target": "전국의 화학분야 관련 학과 재학 중인 학부생 3, 4학년 (휴학생, 졸업생 불가)",
+    "place": "포항공과대학교(POSTECH) 화학과 각 연구실",
+    "benefit": "연구참여 수당(기숙사비 포함) 지급, 수료증 수여",
+    "how_to_apply": "이 사이트의 [지원하기] 탭에서 온라인으로 접수",
+    "contact": "Tel. 054-279-5930 / e-mail. syuri@postech.ac.kr (담당자: 신유리)",
+    "note": "대학 및 학과 사정에 따라 행사 일정이 조정될 수 있음을 안내드리며, 변경 사항이 발생할 경우 재공지하겠습니다.",
 }
 
 FAQ_ITEMS = [

@@ -83,7 +83,7 @@ def hero_with_cta(title: str, subtitle: str, cta_label: str, cta_key: str) -> bo
     _render(
         "<style>"
         f'.st-key-hero_box {{ background:{b["page_bg"]}; border:1px solid {b["primary_light"]};'
-        "border-radius:10px; padding:20px 24px 8px 24px; margin-bottom:20px; }"
+        "border-radius:10px; padding:20px 24px 24px 24px; margin-bottom:14px; }"
         "</style>"
     )
     return clicked
@@ -184,6 +184,7 @@ def info_cards(items):
 
 
 def notice_board(notices, program):
+    """공지사항 - 클릭해서 펼치는 상세 내용 없이, 상태 배지+제목+날짜만 보여주는 단순 목록."""
     b = config.BRAND
     badge_colors = {
         "진행중": ("#E6F4EA", "#1E7B34"),
@@ -194,27 +195,51 @@ def notice_board(notices, program):
     rows = []
     for i, n in enumerate(notices):
         bg, tc = badge_colors.get(n["status"], (b["primary_light"], b["primary_dark"]))
-        body = n["body"]
-        if body is None:
-            body = (f'{program["name"]} 참여기간: {program["period"]} / 접수마감: {program["deadline"]} '
-                     f'({program.get("deadline_note","")})')
         border = "border-bottom:1px solid #F1DFEC;" if i < n_total - 1 else ""
         rows.append(
-            f'<details style="{border}">'
-            '<summary style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;">'
+            f'<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;{border}">'
             f'<span style="padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;background:{bg};color:{tc};flex-shrink:0;">{n["status"]}</span>'
             f'<span style="font-size:14px;font-weight:500;flex:1;color:#222;">{n["title"]}</span>'
             f'<span style="font-size:12px;color:#999;flex-shrink:0;">{n["date"]}</span>'
-            '</summary>'
-            f'<div style="padding:0 16px 18px 16px;font-size:13px;color:#444;line-height:1.8;">{body}</div>'
-            '</details>'
+            '</div>'
         )
     html = (
-        f'<div style="margin-top:10px;font-size:15px;font-weight:700;color:{b["primary_dark"]};margin-bottom:10px;'
+        f'<div style="margin-top:34px;font-size:15px;font-weight:700;color:{b["primary_dark"]};margin-bottom:10px;'
         'display:flex;align-items:center;gap:8px;">공지사항'
-        '<span style="font-size:12px;font-weight:400;color:#999;">진행중 · 모집중 · 예정 프로그램을 함께 안내합니다</span></div>'
+        '<span style="font-size:12px;font-weight:400;color:#999;">진행 중이거나 예정된 프로그램을 참고하실 수 있어요</span></div>'
         '<div style="background:#fff;border:1px solid #E7D6E2;border-radius:8px;overflow:hidden;">'
         + "".join(rows) +
+        '</div>'
+    )
+    _render(html)
+
+
+def notice_detail_card(program, detail):
+    """상시 노출되는 상세 모집 공고 카드 (클릭 안 해도 항상 보임)."""
+    b = config.BRAND
+    rows_data = [
+        ("모집대상", detail["target"]),
+        ("참여기간", program["period"]),
+        ("장소", detail["place"]),
+        ("특전", detail["benefit"]),
+        ("신청방법", detail["how_to_apply"]),
+        ("신청기한", program["deadline"]),
+        ("발표", program["announce"]),
+        ("문의처", detail["contact"]),
+        ("기타사항", detail["note"]),
+    ]
+    rows = "".join(
+        '<tr style="border-bottom:1px solid #F1DFEC;">'
+        f'<td style="padding:10px 14px;font-weight:600;color:{b["primary_dark"]};white-space:nowrap;vertical-align:top;width:110px;">{i+1}. {label}</td>'
+        f'<td style="padding:10px 14px;color:#333;line-height:1.6;">{value}</td>'
+        '</tr>'
+        for i, (label, value) in enumerate(rows_data)
+    )
+    html = (
+        f'<div style="margin-top:34px;font-size:15px;font-weight:700;color:{b["primary_dark"]};margin-bottom:10px;">모집 공고</div>'
+        '<div style="background:#fff;border:1px solid #E7D6E2;border-radius:8px;overflow:hidden;">'
+        f'<div style="text-align:center;font-weight:700;font-size:15px;padding:16px;border-bottom:1px solid #E7D6E2;color:{b["primary_dark"]};">{program["name"]} 대학생 모집</div>'
+        f'<table style="width:100%;border-collapse:collapse;font-size:13px;">{rows}</table>'
         '</div>'
     )
     _render(html)

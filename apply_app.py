@@ -15,6 +15,7 @@ import scoring
 import gsheets
 import config
 import theme
+import pdf_gen
 
 st.set_page_config(page_title="POSTECH 화학과 연구참여 프로그램", page_icon=theme.mascot_icon(), layout="wide")
 theme.inject()
@@ -57,6 +58,7 @@ def page_home():
     ])
 
     theme.notice_board(config.NOTICES, p)
+    theme.notice_detail_card(p, config.NOTICE_DETAIL)
     theme.program_history_table(config.PAST_PROGRAMS)
 
 
@@ -128,6 +130,16 @@ def page_apply():
     if st.session_state.get("submitted_ok"):
         st.success("지원이 정상적으로 완료되었습니다.")
         st.info(f"문의사항은 {CONTACT_INFO} 로 연락 부탁드립니다.")
+        pdf_bytes = st.session_state.get("submitted_pdf")
+        if pdf_bytes:
+            st.download_button(
+                "제출하신 내용 PDF로 확인하기",
+                data=pdf_bytes,
+                file_name=f"{st.session_state.get('submitted_name','지원서')}_제출내용.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
+            st.caption("제출하신 지원서 내용(성적증명서·재학증명서 등 첨부서류 제외)을 PDF로 확인하실 수 있어요.")
         return
 
     with st.container(key="apply_box"):
@@ -218,13 +230,12 @@ def page_apply():
             st.subheader("6. 개인정보 수집·이용 동의")
             st.markdown("""
 > **개인정보 수집·이용 안내**
-> - **수집 항목**: 성명, 생년월일, 성별, 휴대폰번호, 이메일, 학교·전공·학점 정보, 자기소개 및 지원동기, 증명사진, 성적증명서·재학증명서 등 제출 서류
+> - **수집 항목**: 성명, 생년월일, 성별, 휴대폰번호, 이메일, 학교·전공·학점 정보(편입생의 경우 전적학교 정보 포함), 자기소개 및 지원동기, 증명사진, 성적증명서·재학증명서·기타 증빙 등 제출 서류
 > - **수집 목적**: 연구참여 프로그램(SURF/WURF) 지원자 심사 및 선발, 선발 후 프로그램 운영·연락
 > - **보유 및 이용 기간**: 접수일로부터 1년간 보관 후 파기
-> - 위 개인정보 수집·이용에 동의하지 않으실 경우, 지원 접수가 제한될 수 있습니다.
+> - 위 개인정보 수집·이용에 동의하지 않으실 경우, 지원 접수가 제한됩니다.
             """)
-            consent_required = st.radio("개인정보 수집·이용 동의 (필수) *", ["예", "아니오"], horizontal=True, index=None)
-            consent_optional = st.radio("개인정보 수집·이용 동의 (선택)", ["예", "아니오"], horizontal=True, index=None)
+            consent_required = st.radio("개인정보 수집·이용에 동의합니다 *", ["예", "아니오"], horizontal=True, index=None)
 
             submitted = st.form_submit_button("지원서 제출", use_container_width=True, type="primary")
 
@@ -301,7 +312,7 @@ def page_apply():
             "대학군": group, "4.3환산": score43, "환산성적": grade,
             "관심분야": ", ".join(interests), "대학원진학희망": grad_wish, "희망과정": grad_wish,
             "기숙사사용": dorm, "지원동기": motivation,
-            "개인정보_필수": consent_required, "개인정보_선택": consent_optional or "",
+            "개인정보_필수": consent_required, "개인정보_선택": "",
             "서류합격여부": doc_pass, "1지망선발여부": "", "비고": "",
         }
 
@@ -325,9 +336,17 @@ def page_apply():
         row["증명사진_링크"] = gsheets.upload_applicant_file(
             round_name, folder_key, f"증명사진{Path(f_photo.name).suffix}", photo_bytes, _mime_of(f_photo))
 
-        gsheets.append_applicant(row)
+        receipt_no = gsheets.append_applicant(row)
+        row["접수번호"] = receipt_no
+
+        try:
+            preview_pdf = pdf_gen.generate_application_pdf(row, photo_bytes=photo_bytes)
+        except Exception:
+            preview_pdf = None
 
     st.session_state["submitted_ok"] = True
+    st.session_state["submitted_pdf"] = preview_pdf
+    st.session_state["submitted_name"] = name_kr
     st.rerun()
 
 
