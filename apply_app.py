@@ -16,7 +16,7 @@ import gsheets
 import config
 import theme
 
-st.set_page_config(page_title="POSTECH 화학과 연구참여 프로그램", page_icon="🧪", layout="wide")
+st.set_page_config(page_title="POSTECH 화학과 연구참여 프로그램", page_icon=theme.mascot_icon(), layout="wide")
 theme.inject()
 
 CONTACT_INFO = "syuri@postech.ac.kr"
@@ -134,30 +134,32 @@ def page_apply():
     if st.session_state.get("submitted_ok"):
         st.success("지원이 정상적으로 완료되었습니다.")
         st.info(f"문의사항은 {CONTACT_INFO} 로 연락 부탁드립니다.")
-        if st.button("새 지원서 작성"):
-            del st.session_state["submitted_ok"]
-            st.rerun()
         return
 
-    with st.form("apply_form", clear_on_submit=False):
-        st.subheader("1. 기본 정보")
-        c1, c2 = st.columns(2)
-        with c1:
-            name_kr = st.text_input("성명 (한글) *", placeholder="예) 홍길동")
-            birth = st.text_input("생년월일 *", placeholder="예) 2002.01.01")
-            gender = st.selectbox("성별 *", ["남", "여"])
-            phone = st.text_input("휴대폰번호 *", placeholder="예) 010-1234-5678")
-        with c2:
-            name_en = st.text_input("성명 (영문) *", placeholder="예) Hong, Gil-Dong")
-            email = st.text_input("이메일 *", placeholder="예) example@school.ac.kr")
+    st.subheader("1. 기본 정보")
+    c1, c2 = st.columns(2)
+    with c1:
+        name_kr = st.text_input("성명 (한글) *", placeholder="예) 홍길동", key="f_name_kr")
+        birth = st.text_input("생년월일 *", placeholder="예) 2002.01.01", key="f_birth")
+        if birth.strip() and not _is_valid_birth(birth):
+            st.error("생년월일 형식이 올바르지 않습니다. 예) 2002.01.01")
+        gender = st.selectbox("성별 *", ["남", "여"], index=None, placeholder="선택하세요", key="f_gender")
+        phone = st.text_input("휴대폰번호 *", placeholder="예) 010-1234-5678", key="f_phone")
+        if phone.strip() and not _is_valid_phone(phone):
+            st.error("휴대폰번호 형식이 올바르지 않습니다. 예) 010-1234-5678")
+    with c2:
+        name_en = st.text_input("성명 (영문) *", placeholder="예) Hong, Gil-Dong", key="f_name_en")
+        email = st.text_input("이메일 *", placeholder="예) example@school.ac.kr", key="f_email")
+        if email.strip() and not _is_valid_email(email):
+            st.error("이메일 형식이 올바르지 않습니다.")
 
+    with st.form("apply_form", clear_on_submit=False):
         st.subheader("2. 희망 지도교수")
         c3, c4 = st.columns(2)
         with c3:
-            prof1 = st.selectbox("희망지도교수 (1지망) *", scoring.PROFESSORS)
+            prof1 = st.selectbox("희망지도교수 (1지망) *", scoring.PROFESSORS, index=None, placeholder="선택하세요")
         with c4:
-            prof2 = st.selectbox("희망지도교수 (2지망) *", scoring.PROFESSORS,
-                                  index=min(1, len(scoring.PROFESSORS) - 1))
+            prof2 = st.selectbox("희망지도교수 (2지망) *", scoring.PROFESSORS, index=None, placeholder="선택하세요")
 
         st.subheader("3. 학력")
         c5, c6, c7 = st.columns(3)
@@ -170,9 +172,10 @@ def page_apply():
 
         c8, c9, c10 = st.columns(3)
         with c8:
-            semester = st.selectbox("학년 학기 *", ["3학년 1학기", "3학년 2학기", "4학년 1학기", "4학년 2학기"])
+            semester = st.selectbox("학년 학기 *", ["3학년 1학기", "3학년 2학기", "4학년 1학기", "4학년 2학기"],
+                                     index=None, placeholder="선택하세요")
         with c9:
-            scale = st.selectbox("기준평점(만점) *", ["4.5 만점", "4.3 만점"])
+            scale = st.selectbox("기준평점(만점) *", ["4.5 만점", "4.3 만점"], index=None, placeholder="선택하세요")
         with c10:
             gpa = st.text_input("평점 *", placeholder="예) 3.953")
 
@@ -193,9 +196,10 @@ def page_apply():
 
         c14, c15 = st.columns(2)
         with c14:
-            grad_wish = st.selectbox("대학원 진학 희망 여부 *", ["희망하지 않음", "석사", "통합", "박사"])
+            grad_wish = st.selectbox("대학원 진학 희망 여부 *", ["희망하지 않음", "석사", "통합", "박사"],
+                                      index=None, placeholder="선택하세요")
         with c15:
-            dorm = st.selectbox("생활관(기숙사) 사용 여부 *", ["O", "X"])
+            dorm = st.selectbox("생활관(기숙사) 사용 여부 *", ["O", "X"], index=None, placeholder="선택하세요")
 
         st.subheader("5. 서류 제출")
         c16, c17 = st.columns(2)
@@ -213,11 +217,11 @@ def page_apply():
 > **개인정보 수집·이용 안내**
 > - **수집 항목**: 성명, 생년월일, 성별, 휴대폰번호, 이메일, 학교·전공·학점 정보, 자기소개 및 지원동기, 증명사진, 성적증명서·재학증명서 등 제출 서류
 > - **수집 목적**: 연구참여 프로그램(SURF/WURF) 지원자 심사 및 선발, 선발 후 프로그램 운영·연락
-> - **보유 및 이용 기간**: 접수일로부터 1년간 보관 후 파기 (구글드라이브 휴지통 경유 완전삭제)
+> - **보유 및 이용 기간**: 접수일로부터 1년간 보관 후 파기
 > - 위 개인정보 수집·이용에 동의하지 않으실 경우, 지원 접수가 제한될 수 있습니다.
         """)
         consent_required = st.radio("개인정보 수집·이용 동의 (필수) *", ["예", "아니오"], horizontal=True, index=None)
-        consent_optional = st.radio("개인정보 수집·이용 동의 (선택, 편입/기타증빙 해당자만)", ["예", "아니오"], horizontal=True, index=None)
+        consent_optional = st.radio("개인정보 수집·이용 동의 (선택)", ["예", "아니오"], horizontal=True, index=None)
 
         submitted = st.form_submit_button("지원서 제출", use_container_width=True, type="primary")
 
@@ -232,6 +236,13 @@ def page_apply():
         ("지원동기", motivation),
     ]:
         if not str(val).strip():
+            required_missing.append(label)
+    for label, val in [
+        ("성별", gender), ("1지망 교수님", prof1), ("2지망 교수님", prof2),
+        ("학년 학기", semester), ("기준평점(만점)", scale),
+        ("대학원 진학 희망 여부", grad_wish), ("기숙사 사용 여부", dorm),
+    ]:
+        if val is None:
             required_missing.append(label)
     if not interests:
         required_missing.append("관심분야")
@@ -321,8 +332,7 @@ def page_apply():
 if "view" not in st.session_state:
     st.session_state["view"] = "home"
 
-theme.topbar()
-theme.nav(active_key=st.session_state["view"])
+theme.topbar_with_nav(active_key=st.session_state["view"])
 
 view = st.session_state["view"]
 if view == "apply":
@@ -333,3 +343,5 @@ elif view == "faq":
     page_faq()
 else:
     page_home()
+
+theme.footer()
