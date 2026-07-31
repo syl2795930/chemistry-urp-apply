@@ -105,27 +105,28 @@ def topbar(title: str = "POSTECH 화학과 연구참여 프로그램"):
 NAV_ITEMS = [("home", "홈"), ("apply", "지원하기"), ("labs", "연구실"), ("faq", "FAQ")]
 
 
-def logo_title(title: str = "POSTECH 화학과 연구참여 프로그램", clickable: bool = False) -> bool:
-    """제목 (클릭 가능 시 홈으로 이동하는 버튼이 됨). 마스코트는 히어로 박스에 이미 있어서
-    상단에서는 빼고, 다른 탭 버튼들과 정렬이 흐트러지지 않게 텍스트만 둔다."""
+def logo_title(title: str = "POSTECH 화학과 연구참여 프로그램", clickable: bool = False, active: bool = False) -> bool:
+    """제목 (클릭 가능 시 홈으로 이동하는 버튼이 됨). 항상 굵게 + 자주색으로 표시하고,
+    현재 홈 화면일 때는 다른 탭처럼 밑줄도 표시한다."""
     b = config.BRAND
     if not clickable:
         _render(
-            f'<div style="font-weight:700;font-size:15px;color:{b["primary_dark"]};'
+            f'<div style="font-weight:700;font-size:15px;color:{b["primary"]};'
             'white-space:nowrap;margin-bottom:16px;">' + title + '</div>'
         )
         return False
 
     with st.container(key="logo_btn"):
         clicked = st.button(title, key="nav_logo")
+    underline = f"border-bottom:2px solid {b['primary']} !important;" if active else "border-bottom:2px solid transparent !important;"
     _render(
         "<style>"
         '.st-key-logo_btn button {'
         "background:transparent !important; border:none !important; box-shadow:none !important; "
         "padding:6px 4px !important; min-height:auto !important; text-align:left !important; "
-        "border-bottom:2px solid transparent !important; }"
+        f"{underline} }}"
         '.st-key-logo_btn button p {'
-        f"color:{b['primary_dark']} !important; font-weight:700 !important; font-size:15px !important; }}"
+        f"color:{b['primary']} !important; font-weight:700 !important; font-size:15px !important; }}"
         "</style>"
     )
     return clicked
@@ -133,19 +134,17 @@ def logo_title(title: str = "POSTECH 화학과 연구참여 프로그램", click
 
 def top_nav_simple(active_key: str) -> str:
     """st.columns + st.button 기반 네비게이션. 버튼 요소 자체(클릭 영역)는 절대 숨기거나
-    변형하지 않고, 색상/테두리/배경만 CSS로 다듬어서 텍스트 탭처럼 보이게 한다."""
+    변형하지 않고, 색상/테두리/배경만 CSS로 다듬어서 텍스트 탭처럼 보이게 한다.
+    '홈'은 별도 탭 없이 로고/제목을 누르면 이동한다."""
     b = config.BRAND
     with st.container(key="topbar_row"):
-        img_col, title_col, c1, c2, c3, c4 = st.columns(
-            [0.35, 2.25, 0.5, 0.62, 0.55, 0.4], gap="small")
+        img_col, title_col, c2, c3, c4 = st.columns(
+            [0.4, 2.4, 0.62, 0.55, 0.4], gap="small")
         clicked = active_key
         with img_col:
-            st.image(mascot_icon(), width=30)
+            _render(f'<img src="data:image/png;base64,{MASCOT_B64}" style="height:42px;width:auto;display:block;margin-top:2px;" />')
         with title_col:
-            if logo_title(clickable=True):
-                clicked = "home"
-        with c1:
-            if st.button("홈", key="nav_home", type=("primary" if active_key == "home" else "secondary")):
+            if logo_title(clickable=True, active=(active_key == "home")):
                 clicked = "home"
         with c2:
             if st.button("지원하기", key="nav_apply", type=("primary" if active_key == "apply" else "secondary")):
