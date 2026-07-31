@@ -105,48 +105,31 @@ def topbar(title: str = "POSTECH 화학과 연구참여 프로그램"):
 NAV_ITEMS = [("home", "홈"), ("apply", "지원하기"), ("labs", "연구실"), ("faq", "FAQ")]
 
 
-def logo_title(title: str = "POSTECH 화학과 연구참여 프로그램", clickable: bool = False, active: bool = False) -> bool:
-    """제목 (클릭 가능 시 홈으로 이동하는 버튼이 됨). 항상 굵게 + 자주색으로 표시하고,
-    현재 홈 화면일 때는 다른 탭처럼 밑줄도 표시한다."""
+def logo_title():
+    """제목 = 실제 링크(a 태그). 인라인 스타일이라 색이 100% 보장되고, href로 이동하니 클릭도
+    항상 확실하게 동작한다 (버튼 내부 글씨색을 CSS로 덮어씌우는 방식은 이 환경에서 계속
+    불안정해서, 지금까지 한 번도 실패한 적 없는 순수 링크 방식으로 바꿨다)."""
     b = config.BRAND
-    if not clickable:
-        _render(
-            f'<div style="font-weight:700;font-size:15px;color:{b["primary"]};'
-            'white-space:nowrap;margin-bottom:16px;">' + title + '</div>'
-        )
-        return False
-
-    with st.container(key="logo_btn"):
-        clicked = st.button(title, key="nav_logo")
-    underline = f"border-bottom:2px solid {b['primary']} !important;" if active else "border-bottom:2px solid transparent !important;"
     _render(
-        "<style>"
-        '.st-key-logo_btn { margin-top:6px !important; }'
-        '.st-key-logo_btn button {'
-        "background:transparent !important; border:none !important; box-shadow:none !important; "
-        "padding:6px 4px !important; min-height:auto !important; text-align:left !important; "
-        f"{underline} }}"
-        '.st-key-logo_btn button, .st-key-logo_btn button * {'
-        f"color:{b['primary']} !important; font-weight:700 !important; font-size:15px !important; }}"
-        "</style>"
+        f'<a href="?nav=home" style="font-weight:700;font-size:15px;color:{b["primary"]};'
+        'text-decoration:none;white-space:nowrap;display:inline-block;padding:8px 4px;">'
+        'POSTECH 화학과 연구참여 프로그램</a>'
     )
-    return clicked
 
 
 def top_nav_simple(active_key: str) -> str:
-    """st.columns + st.button 기반 네비게이션. 버튼 요소 자체(클릭 영역)는 절대 숨기거나
-    변형하지 않고, 색상/테두리/배경만 CSS로 다듬어서 텍스트 탭처럼 보이게 한다.
-    '홈'은 별도 탭 없이 로고/제목을 누르면 이동한다."""
+    """st.columns + st.button 기반 네비게이션 (지원하기/연구실/FAQ). '홈'은 별도 탭 없이
+    제목(로고) 링크를 누르면 이동한다. 버튼 요소 자체(클릭 영역)는 절대 숨기거나 변형하지
+    않고, 색상/테두리/배경만 CSS로 다듬어서 텍스트 탭처럼 보이게 한다."""
     b = config.BRAND
     with st.container(key="topbar_row"):
         img_col, title_col, c2, c3, c4 = st.columns(
             [0.4, 2.4, 0.62, 0.55, 0.4], gap="small")
         clicked = active_key
         with img_col:
-            _render(f'<img src="data:image/png;base64,{MASCOT_B64}" style="height:42px;width:auto;display:block;margin-top:-6px;" />')
+            _render(f'<img src="data:image/png;base64,{MASCOT_B64}" style="height:28px;width:auto;display:block;margin:0;" />')
         with title_col:
-            if logo_title(clickable=True, active=(active_key == "home")):
-                clicked = "home"
+            logo_title()
         with c2:
             if st.button("지원하기", key="nav_apply", type=("primary" if active_key == "apply" else "secondary")):
                 clicked = "apply"
