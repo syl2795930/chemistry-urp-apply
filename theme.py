@@ -101,41 +101,55 @@ def topbar(title: str = "POSTECH 화학과 연구참여 프로그램"):
 
 
 NAV_ITEMS = [("home", "홈"), ("apply", "지원하기"), ("labs", "연구실"), ("faq", "FAQ")]
-NAV_LABELS = dict(NAV_ITEMS)
-NAV_KEYS = [k for k, _ in NAV_ITEMS]
 
 
-def topbar_with_nav(active_key: str, title: str = "POSTECH 화학과 연구참여 프로그램") -> str:
-    """로고+제목(왼쪽)과 홈/지원하기/연구실/FAQ 탭(오른쪽)을 한 줄에 배치.
-    여러 개의 st.button 대신 st.radio 위젯 '하나'로 구현한다 (버튼을 여러 개 늘어놓으면
-    요소끼리 살짝 겹쳐서 특정 지점만 클릭되는 문제가 있었음 - 위젯을 하나로 줄여서 근본적으로 제거).
-    반환값은 현재 선택된 view 키."""
+def logo_title(title: str = "POSTECH 화학과 연구참여 프로그램"):
     b = config.BRAND
-    if "view" not in st.session_state:
-        st.session_state["view"] = active_key
-    with st.container(key="topbar_row"):
-        left, right = st.columns([2.2, 3])
-        with left:
-            _render(
-                '<div style="display:flex;align-items:center;gap:8px;padding-top:6px;">'
-                f'<img src="data:image/png;base64,{MASCOT_B64}" style="height:30px;width:auto;" />'
-                f'<span style="font-weight:700;font-size:15px;color:{b["primary_dark"]};white-space:nowrap;">{title}</span>'
-                '</div>'
-            )
-        with right:
-            selected = st.radio(
-                "페이지 이동", NAV_KEYS, format_func=lambda k: NAV_LABELS[k],
-                horizontal=True, label_visibility="collapsed", key="view",
-            )
+    _render(
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'
+        f'<img src="data:image/png;base64,{MASCOT_B64}" style="height:30px;width:auto;" />'
+        f'<span style="font-weight:700;font-size:15px;color:{b["primary_dark"]};white-space:nowrap;">{title}</span>'
+        '</div>'
+    )
+
+
+def top_nav_simple(active_key: str) -> str:
+    """가장 단순한 형태 (컨테이너로 감싸지 않고, st.columns + st.button만 사용, 커스텀 CSS로
+    모양을 숨기거나 덮어씌우지 않음). 클릭 문제를 진단하기 위한 최소 구성.
+    반환값은 클릭된 키 (아무것도 안 눌렸으면 active_key 그대로)."""
+    left, c1, c2, c3, c4 = st.columns([2.4, 0.6, 0.6, 0.6, 0.6])
+    with left:
+        logo_title()
+    clicked = active_key
+    with c1:
+        if st.button("홈", key="nav_home", type=("primary" if active_key == "home" else "secondary")):
+            clicked = "home"
+    with c2:
+        if st.button("지원하기", key="nav_apply", type=("primary" if active_key == "apply" else "secondary")):
+            clicked = "apply"
+    with c3:
+        if st.button("연구실", key="nav_labs", type=("primary" if active_key == "labs" else "secondary")):
+            clicked = "labs"
+    with c4:
+        if st.button("FAQ", key="nav_faq", type=("primary" if active_key == "faq" else "secondary")):
+            clicked = "faq"
+    return clicked
+
+
+def top_tabs():
+    """Streamlit 기본 탭 컴포넌트. 클릭 문제 없이 확실하게 동작하는 걸 최우선으로 한다.
+    (버튼/라디오로 직접 만든 커스텀 탭은 특정 지점만 클릭되는 문제가 반복돼서, 여러 Streamlit
+    앱에서 검증된 기본 st.tabs로 되돌렸다. 다만 이 방식은 코드에서 강제로 탭을 전환할 수 없어서,
+    '지원서 작성하기' 버튼을 눌러도 자동으로 지원하기 탭으로 넘어가지는 않는다.)"""
+    b = config.BRAND
     _render(
         "<style>"
-        f'.st-key-topbar_row {{ border-bottom:1px solid {b["primary_light"]}; '
-        "padding-bottom:6px; margin-bottom:16px; }"
-        '.st-key-topbar_row div[data-testid="stHorizontalBlock"] { align-items:center; }'
-        '.st-key-topbar_row div[role="radiogroup"] { justify-content:flex-end; }'
+        f'.stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {{'
+        f"color:{b['primary']} !important; border-bottom-color:{b['primary']} !important; font-weight:700; }}"
+        f'.stTabs [data-baseweb="tab-list"] {{ border-bottom:1px solid {b["primary_light"]}; }}'
         "</style>"
     )
-    return selected
+    return st.tabs([label for _, label in NAV_ITEMS])
 
 
 def info_cards(items):
