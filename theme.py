@@ -106,19 +106,16 @@ NAV_ITEMS = [("home", "홈"), ("apply", "지원하기"), ("labs", "연구실"), 
 
 
 def top_nav_simple(active_key: str) -> str:
-    """st.columns + st.button 기반 네비게이션. 제목도 다른 탭들과 완전히 동일하게
-    st.button으로 만들어서 (컨테이너로 감싸지 않고, 이미지와도 분리해서) 정렬이 어긋나지
-    않게 한다. '홈'은 별도 탭 없이 제목 버튼을 누르면 이동한다."""
+    """st.columns + st.button 기반 네비게이션. 제목 버튼은 마스코트를 CSS 배경 이미지로
+    직접 박아넣어서(별도 이미지 요소로 두지 않음) 위치가 어긋날 일이 없게 한다."""
     b = config.BRAND
     with st.container(key="topbar_row"):
-        img_col, title_col, c2, c3, c4 = st.columns(
-            [0.35, 2.45, 0.62, 0.55, 0.4], gap="small")
+        title_col, c2, c3, c4 = st.columns([2.8, 0.62, 0.55, 0.4], gap="small")
         clicked = active_key
-        with img_col:
-            _render(f'<img src="data:image/png;base64,{MASCOT_B64}" style="height:26px;width:auto;display:block;" />')
         with title_col:
-            if st.button("POSTECH 화학과 연구참여 프로그램", key="nav_logo", type="primary"):
-                clicked = "home"
+            with st.container(key="logo_btn"):
+                if st.button("POSTECH 화학과 연구참여 프로그램", key="nav_logo", type="primary"):
+                    clicked = "home"
         with c2:
             if st.button("지원하기", key="nav_apply", type=("primary" if active_key == "apply" else "secondary")):
                 clicked = "apply"
@@ -144,6 +141,11 @@ def top_nav_simple(active_key: str) -> str:
         f"border-bottom:2px solid {b['primary']} !important; }}"
         '.st-key-topbar_row button[kind="primary"] p {'
         f"color:{b['primary']} !important; font-weight:700 !important; }}"
+        '.st-key-logo_btn button {'
+        f'background-image:url(data:image/png;base64,{MASCOT_B64}) !important; '
+        "background-repeat:no-repeat !important; background-position:2px center !important; "
+        "background-size:34px 34px !important; padding-left:42px !important; "
+        "border-bottom:2px solid transparent !important; }"
         "</style>"
     )
     return clicked
