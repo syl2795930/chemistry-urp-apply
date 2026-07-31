@@ -105,30 +105,20 @@ def topbar(title: str = "POSTECH 화학과 연구참여 프로그램"):
 NAV_ITEMS = [("home", "홈"), ("apply", "지원하기"), ("labs", "연구실"), ("faq", "FAQ")]
 
 
-def logo_title():
-    """마스코트 + 제목을 한 블록(flex)으로 묶어서 간격/정렬을 직접 통제한다.
-    제목은 실제 링크(a 태그)라 색이 100% 보장되고, href로 이동하니 클릭도 확실하다."""
-    b = config.BRAND
-    _render(
-        '<div style="display:flex;align-items:center;gap:6px;margin-top:-10px;">'
-        f'<img src="data:image/png;base64,{MASCOT_B64}" style="height:34px;width:auto;display:block;margin-top:-8px;" />'
-        f'<a href="?nav=home" style="font-weight:700;font-size:15px;color:{b["primary"]};'
-        'text-decoration:none;white-space:nowrap;">POSTECH 화학과 연구참여 프로그램</a>'
-        '</div>'
-    )
-
-
 def top_nav_simple(active_key: str) -> str:
-    """st.columns + st.button 기반 네비게이션 (지원하기/연구실/FAQ). '홈'은 별도 탭 없이
-    제목(로고) 링크를 누르면 이동한다. 버튼 요소 자체(클릭 영역)는 절대 숨기거나 변형하지
-    않고, 색상/테두리/배경만 CSS로 다듬어서 텍스트 탭처럼 보이게 한다."""
+    """st.columns + st.button 기반 네비게이션. 제목도 다른 탭들과 완전히 동일하게
+    st.button으로 만들어서 (컨테이너로 감싸지 않고, 이미지와도 분리해서) 정렬이 어긋나지
+    않게 한다. '홈'은 별도 탭 없이 제목 버튼을 누르면 이동한다."""
     b = config.BRAND
     with st.container(key="topbar_row"):
-        title_col, c2, c3, c4 = st.columns(
-            [2.8, 0.62, 0.55, 0.4], gap="small")
+        img_col, title_col, c2, c3, c4 = st.columns(
+            [0.35, 2.45, 0.62, 0.55, 0.4], gap="small")
         clicked = active_key
+        with img_col:
+            _render(f'<img src="data:image/png;base64,{MASCOT_B64}" style="height:26px;width:auto;display:block;" />')
         with title_col:
-            logo_title()
+            if st.button("POSTECH 화학과 연구참여 프로그램", key="nav_logo", type="primary"):
+                clicked = "home"
         with c2:
             if st.button("지원하기", key="nav_apply", type=("primary" if active_key == "apply" else "secondary")):
                 clicked = "apply"
