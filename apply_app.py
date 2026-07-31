@@ -48,6 +48,7 @@ def _is_valid_email(v: str) -> bool:
 def page_home():
     p = config.PROGRAM
     if theme.hero_with_cta(p["name"], p["intro"], "지원서 작성하기 →", "hero_cta"):
+        st.session_state["submitted_ok"] = False
         st.session_state["view"] = "apply"
         st.rerun()
 
@@ -361,6 +362,10 @@ if st.query_params.get("nav") == "home":
 
 new_view = theme.top_nav_simple(st.session_state["view"])
 if new_view != st.session_state["view"]:
+    if new_view == "apply":
+        # '지원하기' 탭을 새로 눌러서 들어올 때는 완료 화면을 초기화해서 새 폼이 뜨게 한다.
+        # (중복 지원은 관리자 화면에서 골라 지울 수 있으니, 여기서 막지는 않는다)
+        st.session_state["submitted_ok"] = False
     st.session_state["view"] = new_view
     st.rerun()
 
