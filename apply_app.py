@@ -64,6 +64,7 @@ def page_home():
         st.rerun()
 
     theme.info_cards([
+        ("모집대상", config.NOTICE_DETAIL["target"], None),
         ("참여기간", p["period"], p.get("period_note")),
         ("접수마감", p["deadline"], p.get("deadline_note")),
         ("합격자 발표", p["announce"], p.get("announce_note")),
