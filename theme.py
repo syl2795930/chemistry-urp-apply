@@ -39,7 +39,8 @@ def inject():
         ".block-container { max-width: 960px; margin: 0 auto; padding-top: 1.2rem; }"
         f'.st-key-apply_box {{ border:1px solid {b["primary_light"]}; border-radius:10px; '
         "padding:20px 24px 4px 24px; background:#fff; margin-bottom:16px; }"
-        'header[data-testid="stHeader"] { background-color: transparent; }'
+        'header[data-testid="stHeader"] { background-color: transparent; pointer-events: none; }'
+        'header[data-testid="stHeader"] * { pointer-events: auto; }'
         "h1, h2, h3 { color: " + b['primary_dark'] + " !important; }"
         '.stButton>button[kind="primary"], .stFormSubmitButton>button[kind="primary"], button[kind="primary"] {'
         f"background-color:{b['primary']};border-color:{b['primary']};border-radius:8px;font-weight:600; }}"
@@ -114,25 +115,43 @@ def logo_title(title: str = "POSTECH 화학과 연구참여 프로그램"):
 
 
 def top_nav_simple(active_key: str) -> str:
-    """가장 단순한 형태 (컨테이너로 감싸지 않고, st.columns + st.button만 사용, 커스텀 CSS로
-    모양을 숨기거나 덮어씌우지 않음). 클릭 문제를 진단하기 위한 최소 구성.
-    반환값은 클릭된 키 (아무것도 안 눌렸으면 active_key 그대로)."""
-    left, c1, c2, c3, c4 = st.columns([2.4, 0.6, 0.6, 0.6, 0.6])
-    with left:
-        logo_title()
-    clicked = active_key
-    with c1:
-        if st.button("홈", key="nav_home", type=("primary" if active_key == "home" else "secondary")):
-            clicked = "home"
-    with c2:
-        if st.button("지원하기", key="nav_apply", type=("primary" if active_key == "apply" else "secondary")):
-            clicked = "apply"
-    with c3:
-        if st.button("연구실", key="nav_labs", type=("primary" if active_key == "labs" else "secondary")):
-            clicked = "labs"
-    with c4:
-        if st.button("FAQ", key="nav_faq", type=("primary" if active_key == "faq" else "secondary")):
-            clicked = "faq"
+    """st.columns + st.button 기반 네비게이션. 버튼 요소 자체(클릭 영역)는 절대 숨기거나
+    변형하지 않고, 색상/테두리/배경만 CSS로 다듬어서 텍스트 탭처럼 보이게 한다."""
+    b = config.BRAND
+    with st.container(key="topbar_row"):
+        left, c1, c2, c3, c4 = st.columns([2.6, 0.5, 0.62, 0.55, 0.4], gap="small")
+        with left:
+            logo_title()
+        clicked = active_key
+        with c1:
+            if st.button("홈", key="nav_home", type=("primary" if active_key == "home" else "secondary")):
+                clicked = "home"
+        with c2:
+            if st.button("지원하기", key="nav_apply", type=("primary" if active_key == "apply" else "secondary")):
+                clicked = "apply"
+        with c3:
+            if st.button("연구실", key="nav_labs", type=("primary" if active_key == "labs" else "secondary")):
+                clicked = "labs"
+        with c4:
+            if st.button("FAQ", key="nav_faq", type=("primary" if active_key == "faq" else "secondary")):
+                clicked = "faq"
+
+    nav_keys = {"home": "nav_home", "apply": "nav_apply", "labs": "nav_labs", "faq": "nav_faq"}
+    scoped = ", ".join(f'.st-key-{k} button' for k in nav_keys.values())
+    active_class = nav_keys.get(active_key, "nav_home")
+    _render(
+        "<style>"
+        f'.st-key-topbar_row {{ border-bottom:1px solid {b["primary_light"]}; '
+        "padding-bottom:2px; margin-bottom:18px; }"
+        '.st-key-topbar_row div[data-testid="stHorizontalBlock"] { align-items:center; }'
+        f"{scoped} {{ background:transparent !important; border:none !important; "
+        "box-shadow:none !important; border-radius:0 !important; padding:6px 4px !important; "
+        "min-height:auto !important; color:#666 !important; font-weight:500 !important; "
+        "border-bottom:2px solid transparent !important; }"
+        f".st-key-{active_class} button {{ color:{b['primary']} !important; font-weight:700 !important; "
+        f"border-bottom:2px solid {b['primary']} !important; }}"
+        "</style>"
+    )
     return clicked
 
 
