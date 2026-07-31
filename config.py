@@ -62,6 +62,7 @@ SITE_LINKS = {
 # 홈 화면에 상시 노출되는 상세 모집 공고. period/deadline/announce는 위 PROGRAM 값을 그대로 씁니다.
 NOTICE_DETAIL = {
     "target": "전국의 화학분야 관련 학과 재학 중인 학부생 3, 4학년 (휴학생, 졸업생 불가)",
+    "target_short": "화학분야 관련학과 3, 4학년",  # 상단 카드처럼 짧게 보여줘야 하는 곳에 사용 (전체 설명은 위 target)
     "place": "포항공과대학교(POSTECH) 화학과 각 연구실",
     "benefit": "연구참여 수당(기숙사비 포함) 지급, 수료증 수여",
     "how_to_apply": "이 사이트의 [지원하기] 탭에서 온라인으로 접수",
