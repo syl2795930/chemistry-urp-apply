@@ -136,20 +136,21 @@ def top_nav_simple(active_key: str) -> str:
             if st.button("FAQ", key="nav_faq", type=("primary" if active_key == "faq" else "secondary")):
                 clicked = "faq"
 
-    nav_keys = {"home": "nav_home", "apply": "nav_apply", "labs": "nav_labs", "faq": "nav_faq"}
-    scoped = ", ".join(f'.st-key-{k} button' for k in nav_keys.values())
-    active_class = nav_keys.get(active_key, "nav_home")
     _render(
         "<style>"
         f'.st-key-topbar_row {{ border-bottom:1px solid {b["primary_light"]}; '
         "padding-bottom:2px; margin-bottom:18px; }"
         '.st-key-topbar_row div[data-testid="stHorizontalBlock"] { align-items:center; }'
-        f"{scoped} {{ background:transparent !important; border:none !important; "
-        "box-shadow:none !important; border-radius:0 !important; padding:6px 4px !important; "
-        "min-height:auto !important; color:#666 !important; font-weight:500 !important; "
+        '.st-key-topbar_row button[kind="primary"], .st-key-topbar_row button[kind="secondary"] {'
+        "background:transparent !important; border:none !important; box-shadow:none !important; "
+        "border-radius:0 !important; padding:6px 4px !important; min-height:auto !important; "
         "border-bottom:2px solid transparent !important; }"
-        f".st-key-{active_class} button {{ color:{b['primary']} !important; font-weight:700 !important; "
+        '.st-key-topbar_row button[kind="secondary"] p {'
+        "color:#666 !important; font-weight:500 !important; }"
+        '.st-key-topbar_row button[kind="primary"] {'
         f"border-bottom:2px solid {b['primary']} !important; }}"
+        '.st-key-topbar_row button[kind="primary"] p {'
+        f"color:{b['primary']} !important; font-weight:700 !important; }}"
         "</style>"
     )
     return clicked
