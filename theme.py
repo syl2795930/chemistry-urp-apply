@@ -136,9 +136,12 @@ def top_nav_simple(active_key: str) -> str:
     변형하지 않고, 색상/테두리/배경만 CSS로 다듬어서 텍스트 탭처럼 보이게 한다."""
     b = config.BRAND
     with st.container(key="topbar_row"):
-        left, c1, c2, c3, c4 = st.columns([2.6, 0.5, 0.62, 0.55, 0.4], gap="small")
+        img_col, title_col, c1, c2, c3, c4 = st.columns(
+            [0.35, 2.25, 0.5, 0.62, 0.55, 0.4], gap="small")
         clicked = active_key
-        with left:
+        with img_col:
+            st.image(mascot_icon(), width=30)
+        with title_col:
             if logo_title(clickable=True):
                 clicked = "home"
         with c1:
