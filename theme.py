@@ -26,12 +26,19 @@ def _render(html: str):
     st.markdown(html, unsafe_allow_html=True)
 
 
+def inline_error(text: str):
+    """st.error()는 글자가 커서, 입력폼 실시간 검증용으로 작은 빨간 글씨 경고를 대신 쓴다."""
+    _render(f'<div style="color:#D33;font-size:12px;margin:-8px 0 8px 2px;">⚠ {text}</div>')
+
+
 def inject():
     b = config.BRAND
     css = (
         "<style>"
         f".stApp {{ background-color: {b['page_bg']}; }}"
         ".block-container { max-width: 960px; margin: 0 auto; padding-top: 1.2rem; }"
+        f'.st-key-apply_box {{ border:1px solid {b["primary_light"]}; border-radius:10px; '
+        "padding:20px 24px 4px 24px; background:#fff; margin-bottom:16px; }"
         'header[data-testid="stHeader"] { background-color: transparent; }'
         "h1, h2, h3 { color: " + b['primary_dark'] + " !important; }"
         '.stButton>button[kind="primary"], .stFormSubmitButton>button[kind="primary"], button[kind="primary"] {'
@@ -52,35 +59,32 @@ def inject():
     _render(css)
 
 
-def hero(title: str, subtitle: str = ""):
-    """홈 화면 상단 히어로 카드 (분홍 배경 인트로 박스 + 마스코트). 위쪽 절반만 그리고,
-    아래쪽은 hero_cta_wrap_start/end로 감싸서 그 사이에 실제 버튼을 넣는다."""
+def hero_with_cta(title: str, subtitle: str, cta_label: str, cta_key: str) -> bool:
+    """분홍 히어로 박스 하나 안에 제목/설명/마스코트/버튼을 전부 넣는다.
+    (컨테이너 자체에 테두리를 입히고, 그 안에 실제 버튼을 넣기 때문에 상자가 둘로 갈라지지 않는다)
+    버튼이 눌리면 True를 반환한다."""
     b = config.BRAND
-    sub = f"<p style=\'font-size:14px;color:#444;line-height:1.7;margin:10px 0 0;\'>{subtitle}</p>" if subtitle else ""
-    html = (
-        f'<div style="background:{b["page_bg"]};border:1px solid {b["primary_light"]};'
-        'border-radius:10px 10px 0 0;border-bottom:none;padding:28px 28px 4px 28px;'
-        'display:flex;align-items:center;gap:20px;">'
-        '<div style="flex:1;">'
-        f'<div style="font-size:24px;font-weight:700;margin:0 0 8px;color:{b["primary_dark"]};">{title}</div>'
-        f'{sub}'
-        '</div>'
-        f'<img src="data:image/png;base64,{MASCOT_B64}" style="width:100px;height:100px;object-fit:contain;flex-shrink:0;" />'
-        '</div>'
-    )
-    _render(html)
-
-
-def hero_cta_wrap_start():
-    b = config.BRAND
+    clicked = False
+    with st.container(key="hero_box"):
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            _render(
+                f'<div style="font-size:24px;font-weight:700;margin:4px 0 8px;color:{b["primary_dark"]};">{title}</div>'
+                f'<p style="font-size:14px;color:#444;line-height:1.7;margin:0 0 16px;">{subtitle}</p>'
+            )
+            clicked = st.button(cta_label, key=cta_key, type="primary")
+        with col2:
+            _render(
+                f'<img src="data:image/png;base64,{MASCOT_B64}" '
+                'style="width:100px;height:100px;object-fit:contain;display:block;margin:4px auto;" />'
+            )
     _render(
-        f'<div style="background:{b["page_bg"]};border:1px solid {b["primary_light"]};border-top:none;'
-        'border-radius:0 0 10px 10px;padding:4px 28px 24px 28px;margin-bottom:20px;">'
+        "<style>"
+        f'.st-key-hero_box {{ background:{b["page_bg"]}; border:1px solid {b["primary_light"]};'
+        "border-radius:10px; padding:20px 24px 8px 24px; margin-bottom:20px; }"
+        "</style>"
     )
-
-
-def hero_cta_wrap_end():
-    _render("</div>")
+    return clicked
 
 
 def topbar(title: str = "POSTECH 화학과 연구참여 프로그램"):
@@ -100,23 +104,37 @@ NAV_ITEMS = [("home", "홈"), ("apply", "지원하기"), ("labs", "연구실"), 
 
 
 def topbar_with_nav(active_key: str, title: str = "POSTECH 화학과 연구참여 프로그램"):
-    """로고+제목(왼쪽)과 홈/지원하기/연구실/FAQ 탭(오른쪽)을 한 줄에 같이 배치."""
+    """로고+제목(왼쪽)과 홈/지원하기/연구실/FAQ 텍스트 탭(오른쪽)을 한 줄에 배치.
+    각 탭은 자기 전용 컨테이너(key)로 감싸서, 버튼끼리 영역이 겹치거나 클릭이 막히지 않도록 한다."""
     b = config.BRAND
-    left, *nav_cols = st.columns([2.6] + [0.75] * len(NAV_ITEMS))
+    left, *nav_cols = st.columns([2.4] + [0.55] * len(NAV_ITEMS))
     with left:
         _render(
-            '<div style="display:flex;align-items:center;gap:8px;height:38px;">'
+            '<div style="display:flex;align-items:center;gap:8px;padding-top:6px;">'
             f'<img src="data:image/png;base64,{MASCOT_B64}" style="height:30px;width:auto;" />'
             f'<span style="font-weight:700;font-size:15px;color:{b["primary_dark"]};white-space:nowrap;">{title}</span>'
             '</div>'
         )
     for col, (key, label) in zip(nav_cols, NAV_ITEMS):
         with col:
-            kind = "primary" if key == active_key else "secondary"
-            if st.button(label, key=f"nav_{key}", use_container_width=True, type=kind):
-                st.session_state["view"] = key
-                st.rerun()
-    st.markdown(f'<hr style="margin-top:2px;margin-bottom:18px;border-color:{b["primary_light"]};" />', unsafe_allow_html=True)
+            with st.container(key=f"navbtn_{key}"):
+                if st.button(label, key=f"navbtn_click_{key}", use_container_width=True):
+                    st.session_state["view"] = key
+                    st.rerun()
+    _render(
+        "<style>"
+        'div[class*="st-key-navbtn_"] button {'
+        "background:transparent !important; border:none !important; box-shadow:none !important;"
+        "padding:6px 2px !important; color:#666 !important; font-weight:500 !important;"
+        "border-radius:0 !important; border-bottom:2px solid transparent !important; }"
+        'div[class*="st-key-navbtn_"] button:hover {'
+        f"color:{b['primary']} !important; }}"
+        f".st-key-navbtn_{active_key} button {{"
+        f"color:{b['primary']} !important; font-weight:700 !important;"
+        f"border-bottom:2px solid {b['primary']} !important; }}"
+        "</style>"
+    )
+    _render(f'<hr style="margin:8px 0 18px;border:none;border-top:1px solid {b["primary_light"]};" />')
 
 
 def info_cards(items):

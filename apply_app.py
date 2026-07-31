@@ -46,12 +46,9 @@ def _is_valid_email(v: str) -> bool:
 # ══════════════════════════ 홈 ══════════════════════════
 def page_home():
     p = config.PROGRAM
-    theme.hero(p["name"], p["intro"])
-    theme.hero_cta_wrap_start()
-    if st.button("지원서 작성하기 →", key="hero_cta", type="primary"):
+    if theme.hero_with_cta(p["name"], p["intro"], "지원서 작성하기 →", "hero_cta"):
         st.session_state["view"] = "apply"
         st.rerun()
-    theme.hero_cta_wrap_end()
 
     theme.info_cards([
         ("참여기간", p["period"], p.get("period_note")),
@@ -61,11 +58,6 @@ def page_home():
 
     theme.notice_board(config.NOTICES, p)
     theme.program_history_table(config.PAST_PROGRAMS)
-
-    st.caption(
-        f"관련 사이트: [화학과 홈페이지]({config.SITE_LINKS.get('dept','')}) · "
-        f"[대학원 입학]({config.SITE_LINKS.get('grad_admission','')})"
-    )
 
 
 # ══════════════════════════ 연구실 소개 ══════════════════════════
@@ -81,18 +73,18 @@ def page_faq():
     theme.faq_accordion(config.FAQ_ITEMS)
 
     st.markdown("**1:1 문의 게시판**")
-    with st.expander("✍️ 문의 작성하기"):
+    with st.expander("문의 작성하기"):
         with st.form("qna_form", clear_on_submit=True):
-            q_name = st.text_input("이름 (선택, 비워두면 '익명'으로 표시됩니다)")
-            q_pw = st.text_input("비밀번호 (4자리 이상, 나중에 본인 글 확인용)", type="password")
+            q_name = st.text_input("이름 *")
+            q_pw = st.text_input("비밀번호 (선택, 나중에 본인 글 확인용)", type="password")
             q_text = st.text_area("문의 내용 *", height=120)
             q_submitted = st.form_submit_button("문의 등록", use_container_width=True)
 
         if q_submitted:
-            if not q_text.strip():
+            if not q_name.strip():
+                st.error("이름을 입력해주세요.")
+            elif not q_text.strip():
                 st.error("문의 내용을 입력해주세요.")
-            elif len(q_pw.strip()) < 4:
-                st.error("비밀번호를 4자리 이상 입력해주세요.")
             else:
                 gsheets.append_question(q_name.strip(), q_pw.strip(), q_text.strip())
                 st.success("문의가 등록되었습니다.")
@@ -110,14 +102,15 @@ def page_faq():
             qid = str(r.get("id"))
             status = "✅ 답변완료" if str(r.get("답변여부")) == "Y" else "⏳ 답변대기"
             unlock_key = f"qna_unlocked_{qid}"
-            with st.expander(f"[{status}] {r.get('이름') or '익명'} — {r.get('등록일시')}"):
+            with st.expander(f"[{status}] {r.get('이름')} — {r.get('등록일시')}"):
                 if st.session_state.get(unlock_key):
                     st.write(r.get("질문", ""))
                     if str(r.get("답변여부")) == "Y":
                         st.markdown("**➡ 답변**")
                         st.write(r.get("답변", ""))
                 else:
-                    st.caption("본인이 남긴 문의인 경우, 등록하신 비밀번호를 입력하면 내용을 볼 수 있어요.")
+                    st.caption("본인이 남긴 문의인 경우, 등록하신 비밀번호를 입력하면 내용을 볼 수 있어요. "
+                               "(비밀번호를 입력하지 않고 등록하셨다면 비워두고 확인을 눌러주세요)")
                     pw_try = st.text_input("비밀번호", type="password", key=f"pw_try_{qid}")
                     if st.button("확인", key=f"pw_check_{qid}"):
                         if pw_try == str(r.get("비밀번호", "")):
@@ -136,94 +129,95 @@ def page_apply():
         st.info(f"문의사항은 {CONTACT_INFO} 로 연락 부탁드립니다.")
         return
 
-    st.subheader("1. 기본 정보")
-    c1, c2 = st.columns(2)
-    with c1:
-        name_kr = st.text_input("성명 (한글) *", placeholder="예) 홍길동", key="f_name_kr")
-        birth = st.text_input("생년월일 *", placeholder="예) 2002.01.01", key="f_birth")
-        if birth.strip() and not _is_valid_birth(birth):
-            st.error("생년월일 형식이 올바르지 않습니다. 예) 2002.01.01")
-        gender = st.selectbox("성별 *", ["남", "여"], index=None, placeholder="선택하세요", key="f_gender")
-        phone = st.text_input("휴대폰번호 *", placeholder="예) 010-1234-5678", key="f_phone")
-        if phone.strip() and not _is_valid_phone(phone):
-            st.error("휴대폰번호 형식이 올바르지 않습니다. 예) 010-1234-5678")
-    with c2:
-        name_en = st.text_input("성명 (영문) *", placeholder="예) Hong, Gil-Dong", key="f_name_en")
-        email = st.text_input("이메일 *", placeholder="예) example@school.ac.kr", key="f_email")
-        if email.strip() and not _is_valid_email(email):
-            st.error("이메일 형식이 올바르지 않습니다.")
+    with st.container(key="apply_box"):
+        st.subheader("1. 기본 정보")
+        c1, c2 = st.columns(2)
+        with c1:
+            name_kr = st.text_input("성명 (한글) *", placeholder="예) 홍길동", key="f_name_kr")
+            birth = st.text_input("생년월일 *", placeholder="예) 2002.01.01", key="f_birth")
+            if birth.strip() and not _is_valid_birth(birth):
+                theme.inline_error("생년월일 형식이 올바르지 않습니다. 예) 2002.01.01")
+            gender = st.selectbox("성별 *", ["남", "여"], index=None, placeholder="선택하세요", key="f_gender")
+            phone = st.text_input("휴대폰번호 *", placeholder="예) 010-1234-5678", key="f_phone")
+            if phone.strip() and not _is_valid_phone(phone):
+                theme.inline_error("휴대폰번호 형식이 올바르지 않습니다. 예) 010-1234-5678")
+        with c2:
+            name_en = st.text_input("성명 (영문) *", placeholder="예) Hong, Gil-Dong", key="f_name_en")
+            email = st.text_input("이메일 *", placeholder="예) example@school.ac.kr", key="f_email")
+            if email.strip() and not _is_valid_email(email):
+                theme.inline_error("이메일 형식이 올바르지 않습니다.")
 
-    with st.form("apply_form", clear_on_submit=False):
-        st.subheader("2. 희망 지도교수")
-        c3, c4 = st.columns(2)
-        with c3:
-            prof1 = st.selectbox("희망지도교수 (1지망) *", scoring.PROFESSORS, index=None, placeholder="선택하세요")
-        with c4:
-            prof2 = st.selectbox("희망지도교수 (2지망) *", scoring.PROFESSORS, index=None, placeholder="선택하세요")
+        with st.form("apply_form", clear_on_submit=False, border=False):
+            st.subheader("2. 희망 지도교수")
+            c3, c4 = st.columns(2)
+            with c3:
+                prof1 = st.selectbox("희망지도교수 (1지망) *", scoring.PROFESSORS, index=None, placeholder="선택하세요")
+            with c4:
+                prof2 = st.selectbox("희망지도교수 (2지망) *", scoring.PROFESSORS, index=None, placeholder="선택하세요")
 
-        st.subheader("3. 학력")
-        c5, c6, c7 = st.columns(3)
-        with c5:
-            school = st.text_input("학사 학교명 *", placeholder="예) 포항공과대학교")
-        with c6:
-            major = st.text_input("학사 전공명 *", placeholder="예) 화학과")
-        with c7:
-            admit_ym = st.text_input("입학 연월 *", placeholder="예) 2022-03")
+            st.subheader("3. 학력")
+            c5, c6, c7 = st.columns(3)
+            with c5:
+                school = st.text_input("학사 학교명 *", placeholder="예) 포항공과대학교")
+            with c6:
+                major = st.text_input("학사 전공명 *", placeholder="예) 화학과")
+            with c7:
+                admit_ym = st.text_input("입학 연월 *", placeholder="예) 2022-03")
 
-        c8, c9, c10 = st.columns(3)
-        with c8:
-            semester = st.selectbox("학년 학기 *", ["3학년 1학기", "3학년 2학기", "4학년 1학기", "4학년 2학기"],
-                                     index=None, placeholder="선택하세요")
-        with c9:
-            scale = st.selectbox("기준평점(만점) *", ["4.5 만점", "4.3 만점"], index=None, placeholder="선택하세요")
-        with c10:
-            gpa = st.text_input("평점 *", placeholder="예) 3.953")
+            c8, c9, c10 = st.columns(3)
+            with c8:
+                semester = st.selectbox("학년 학기 *", ["3학년 1학기", "3학년 2학기", "4학년 1학기", "4학년 2학기"],
+                                         index=None, placeholder="선택하세요")
+            with c9:
+                scale = st.selectbox("기준평점(만점) *", ["4.5 만점", "4.3 만점"], index=None, placeholder="선택하세요")
+            with c10:
+                gpa = st.text_input("평점 *", placeholder="예) 3.953")
 
-        with st.expander("편입생인 경우에만 입력"):
-            c11, c12, c13 = st.columns(3)
-            with c11:
-                t_school = st.text_input("전적 학사 학교명")
-                t_scale = st.selectbox("전적 기준평점(만점)", ["", "4.5 만점", "4.3 만점"])
-            with c12:
-                t_major = st.text_input("전적 학사 전공명")
-                t_gpa = st.text_input("전적 평점")
-            with c13:
-                t_admit_ym = st.text_input("전적 학교 입학 연월")
+            with st.expander("편입생인 경우에만 입력"):
+                c11, c12, c13 = st.columns(3)
+                with c11:
+                    t_school = st.text_input("전적 학사 학교명")
+                    t_scale = st.selectbox("전적 기준평점(만점)", ["", "4.5 만점", "4.3 만점"])
+                with c12:
+                    t_major = st.text_input("전적 학사 전공명")
+                    t_gpa = st.text_input("전적 평점")
+                with c13:
+                    t_admit_ym = st.text_input("전적 학교 입학 연월")
 
-        st.subheader("4. 관심분야 및 지원동기")
-        interests = st.multiselect("관심분야 *", ["유기화학", "무기화학", "물리화학", "분석화학", "고분자화학", "생화학"])
-        motivation = st.text_area("자기소개 및 지원동기 * (최대 2000자)", max_chars=2000, height=180)
+            st.subheader("4. 관심분야 및 지원동기")
+            interests = st.multiselect("관심분야 *", ["유기화학", "무기화학", "물리화학", "분석화학", "고분자화학", "생화학"])
+            motivation = st.text_area("자기소개 및 지원동기 * (최대 2000자)", max_chars=2000, height=180)
 
-        c14, c15 = st.columns(2)
-        with c14:
-            grad_wish = st.selectbox("대학원 진학 희망 여부 *", ["희망하지 않음", "석사", "통합", "박사"],
-                                      index=None, placeholder="선택하세요")
-        with c15:
-            dorm = st.selectbox("생활관(기숙사) 사용 여부 *", ["O", "X"], index=None, placeholder="선택하세요")
+            c14, c15 = st.columns(2)
+            with c14:
+                grad_wish = st.selectbox("대학원 진학 희망 여부 *", ["희망하지 않음", "석사", "통합", "박사"],
+                                          index=None, placeholder="선택하세요")
+            with c15:
+                dorm = st.selectbox("생활관(기숙사) 사용 여부 *", ["O", "X"], index=None, placeholder="선택하세요")
 
-        st.subheader("5. 서류 제출")
-        c16, c17 = st.columns(2)
-        with c16:
-            f_transcript = st.file_uploader("성적증명서 (PDF, 문서확인번호 포함) *", type=["pdf"])
-            f_enrollment = st.file_uploader("재학증명서 (PDF, 2026년 3월 이후 발급) *", type=["pdf"])
-        with c17:
-            f_etc_list = st.file_uploader(
-                "기타 우수성 입증 증빙 (선택, PDF, 여러 개 첨부 가능)",
-                type=["pdf"], accept_multiple_files=True)
-            f_photo = st.file_uploader("증명사진 (3.5*4.5) *", type=["jpg", "jpeg", "png"])
+            st.subheader("5. 서류 제출")
+            c16, c17 = st.columns(2)
+            with c16:
+                f_transcript = st.file_uploader("성적증명서 (PDF, 문서확인번호 포함) *", type=["pdf"])
+                f_enrollment = st.file_uploader("재학증명서 (PDF, 2026년 3월 이후 발급) *", type=["pdf"])
+            with c17:
+                f_etc_list = st.file_uploader(
+                    "기타 우수성 입증 증빙 (선택, PDF, 여러 개 첨부 가능)",
+                    type=["pdf"], accept_multiple_files=True)
+                f_photo = st.file_uploader("증명사진 (3.5*4.5) *", type=["jpg", "jpeg", "png"])
 
-        st.subheader("6. 개인정보 수집·이용 동의")
-        st.markdown("""
+            st.subheader("6. 개인정보 수집·이용 동의")
+            st.markdown("""
 > **개인정보 수집·이용 안내**
 > - **수집 항목**: 성명, 생년월일, 성별, 휴대폰번호, 이메일, 학교·전공·학점 정보, 자기소개 및 지원동기, 증명사진, 성적증명서·재학증명서 등 제출 서류
 > - **수집 목적**: 연구참여 프로그램(SURF/WURF) 지원자 심사 및 선발, 선발 후 프로그램 운영·연락
 > - **보유 및 이용 기간**: 접수일로부터 1년간 보관 후 파기
 > - 위 개인정보 수집·이용에 동의하지 않으실 경우, 지원 접수가 제한될 수 있습니다.
-        """)
-        consent_required = st.radio("개인정보 수집·이용 동의 (필수) *", ["예", "아니오"], horizontal=True, index=None)
-        consent_optional = st.radio("개인정보 수집·이용 동의 (선택)", ["예", "아니오"], horizontal=True, index=None)
+            """)
+            consent_required = st.radio("개인정보 수집·이용 동의 (필수) *", ["예", "아니오"], horizontal=True, index=None)
+            consent_optional = st.radio("개인정보 수집·이용 동의 (선택)", ["예", "아니오"], horizontal=True, index=None)
 
-        submitted = st.form_submit_button("지원서 제출", use_container_width=True, type="primary")
+            submitted = st.form_submit_button("지원서 제출", use_container_width=True, type="primary")
 
     if not submitted:
         return
