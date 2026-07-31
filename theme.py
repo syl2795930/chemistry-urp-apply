@@ -36,7 +36,7 @@ def inject():
     css = (
         "<style>"
         f".stApp {{ background-color: {b['page_bg']}; }}"
-        ".block-container { max-width: 960px; margin: 0 auto; padding-top: 1.2rem; }"
+        ".block-container { max-width: 1150px; margin: 0 auto; padding-top: 1.2rem; }"
         f'.st-key-apply_box {{ border:1px solid {b["primary_light"]}; border-radius:10px; '
         "padding:20px 24px 4px 24px; background:#fff; margin-bottom:16px; }"
         'header[data-testid="stHeader"] { background-color: transparent; pointer-events: none; }'
@@ -105,14 +105,34 @@ def topbar(title: str = "POSTECH 화학과 연구참여 프로그램"):
 NAV_ITEMS = [("home", "홈"), ("apply", "지원하기"), ("labs", "연구실"), ("faq", "FAQ")]
 
 
-def logo_title(title: str = "POSTECH 화학과 연구참여 프로그램"):
+def logo_title(title: str = "POSTECH 화학과 연구참여 프로그램", clickable: bool = False) -> bool:
+    """마스코트(장식용) + 제목. clickable=True면 제목 텍스트가 버튼이 되어 누르면 True를 반환한다."""
     b = config.BRAND
+    if not clickable:
+        _render(
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">'
+            f'<img src="data:image/png;base64,{MASCOT_B64}" style="height:30px;width:auto;" />'
+            f'<span style="font-weight:700;font-size:15px;color:{b["primary_dark"]};white-space:nowrap;">{title}</span>'
+            '</div>'
+        )
+        return False
+
+    img_col, title_col = st.columns([0.09, 0.91])
+    with img_col:
+        _render(f'<img src="data:image/png;base64,{MASCOT_B64}" style="height:30px;width:auto;margin-top:4px;" />')
+    with title_col:
+        with st.container(key="logo_btn"):
+            clicked = st.button(title, key="nav_logo")
     _render(
-        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'
-        f'<img src="data:image/png;base64,{MASCOT_B64}" style="height:30px;width:auto;" />'
-        f'<span style="font-weight:700;font-size:15px;color:{b["primary_dark"]};white-space:nowrap;">{title}</span>'
-        '</div>'
+        "<style>"
+        '.st-key-logo_btn button {'
+        "background:transparent !important; border:none !important; box-shadow:none !important; "
+        f"padding:6px 4px !important; min-height:auto !important; text-align:left !important; }}"
+        '.st-key-logo_btn button p {'
+        f"color:{b['primary_dark']} !important; font-weight:700 !important; font-size:15px !important; }}"
+        "</style>"
     )
+    return clicked
 
 
 def top_nav_simple(active_key: str) -> str:
@@ -121,9 +141,10 @@ def top_nav_simple(active_key: str) -> str:
     b = config.BRAND
     with st.container(key="topbar_row"):
         left, c1, c2, c3, c4 = st.columns([2.6, 0.5, 0.62, 0.55, 0.4], gap="small")
-        with left:
-            logo_title()
         clicked = active_key
+        with left:
+            if logo_title(clickable=True):
+                clicked = "home"
         with c1:
             if st.button("홈", key="nav_home", type=("primary" if active_key == "home" else "secondary")):
                 clicked = "home"
