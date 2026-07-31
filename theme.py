@@ -132,15 +132,7 @@ def topbar_with_nav(active_key: str, title: str = "POSTECH 화학과 연구참�
         f'.st-key-topbar_row {{ border-bottom:1px solid {b["primary_light"]}; '
         "padding-bottom:6px; margin-bottom:16px; }"
         '.st-key-topbar_row div[data-testid="stHorizontalBlock"] { align-items:center; }'
-        '.st-key-topbar_row div[role="radiogroup"] { justify-content:flex-end; gap:4px; }'
-        '.st-key-topbar_row div[role="radiogroup"] label { '
-        "background:transparent !important; border:none !important; padding:4px 10px !important; "
-        "margin:0 !important; }"
-        '.st-key-topbar_row div[role="radiogroup"] label > div:first-child { display:none; }'
-        '.st-key-topbar_row div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] p {'
-        "color:#666 !important; font-weight:500 !important; font-size:14px !important; }"
-        '.st-key-topbar_row div[role="radiogroup"] label[aria-checked="true"] div[data-testid="stMarkdownContainer"] p {'
-        f"color:{b['primary']} !important; font-weight:700 !important;}}"
+        '.st-key-topbar_row div[role="radiogroup"] { justify-content:flex-end; }'
         "</style>"
     )
     return selected
