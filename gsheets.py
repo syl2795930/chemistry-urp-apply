@@ -181,13 +181,13 @@ def _find_or_create_subfolder(name: str, parent_id: str) -> str:
     return folder["id"]
 
 
-def upload_applicant_file(receipt_no: str, applicant_name: str, filename: str,
+def upload_applicant_file(round_name: str, applicant_folder_name: str, filename: str,
                            file_bytes: bytes, mimetype: str) -> str:
-    """지원자별 하위 폴더에 파일 업로드 후 webViewLink 반환."""
+    """구글드라이브 [최상위 폴더]/[회차 폴더]/[지원자 폴더]/파일 구조로 업로드 후 webViewLink 반환."""
     drive = _get_drive()
     root_id = st.secrets["app"]["drive_folder_id"]
-    folder_name = f"{receipt_no}_{applicant_name}"
-    folder_id = _find_or_create_subfolder(folder_name, root_id)
+    round_id = _find_or_create_subfolder(round_name, root_id)
+    folder_id = _find_or_create_subfolder(applicant_folder_name, round_id)
     media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=mimetype, resumable=False)
     meta = {"name": filename, "parents": [folder_id]}
     f = drive.files().create(body=meta, media_body=media, fields="id, webViewLink", supportsAllDrives=True).execute()
@@ -221,27 +221,30 @@ def get_file_name_from_link(view_link: str) -> str:
 
 # ── 연도별 아카이브 / 삭제 (용량 관리 + 개인정보 보유기간 준수) ──────
 
-def find_applicant_folder_id(receipt_no: str, applicant_name: str):
-    """지원자 폴더가 있으면 id 반환, 없으면 None."""
+def _parent_folder_id_from_link(view_link: str):
+    """파일 링크로부터 그 파일이 들어있는 (지원자) 폴더의 id를 역으로 찾는다.
+    폴더 이름 규칙이 바뀌어도 항상 정확하게 동작한다 (이름으로 재구성하지 않음)."""
     drive = _get_drive()
-    root_id = st.secrets["app"]["drive_folder_id"]
-    folder_name = f"{receipt_no}_{applicant_name}"
-    q = (f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' "
-         f"and '{root_id}' in parents and trashed = false")
-    res = drive.files().list(
-        q=q, fields="files(id, name)",
-        supportsAllDrives=True, includeItemsFromAllDrives=True, corpora="allDrives"
-    ).execute()
-    files = res.get("files", [])
-    return files[0]["id"] if files else None
+    file_id = view_link
+    if "/d/" in view_link:
+        file_id = view_link.split("/d/")[1].split("/")[0]
+    meta = drive.files().get(fileId=file_id, fields="parents", supportsAllDrives=True).execute()
+    parents = meta.get("parents") or []
+    return parents[0] if parents else None
 
 
-def trash_applicant_folder(receipt_no: str, applicant_name: str):
-    """지원자 폴더를 휴지통으로 이동 (30일간 복구 가능, 완전삭제 아님)."""
-    folder_id = find_applicant_folder_id(receipt_no, applicant_name)
-    if folder_id:
-        drive = _get_drive()
-        drive.files().update(fileId=folder_id, body={"trashed": True}, supportsAllDrives=True).execute()
+def trash_applicant_folder_by_row(row: dict):
+    """행에 저장된 파일 링크를 이용해 그 지원자의 폴더를 찾아 휴지통으로 이동
+    (30일간 복구 가능, 완전삭제 아님)."""
+    drive = _get_drive()
+    for col in ["성적증명서_링크", "재학증명서_링크", "증명사진_링크"]:
+        link = row.get(col, "")
+        if not link:
+            continue
+        folder_id = _parent_folder_id_from_link(link)
+        if folder_id:
+            drive.files().update(fileId=folder_id, body={"trashed": True}, supportsAllDrives=True).execute()
+            return
 
 
 def delete_applicant_row(receipt_no: str):
@@ -264,7 +267,7 @@ def archive_and_delete_year(df: "pd.DataFrame", year: str, progress_cb=None):
     targets = targets.sort_values("접수번호", ascending=False)
     total = len(targets)
     for i, (_, row) in enumerate(targets.iterrows()):
-        trash_applicant_folder(row["접수번호"], row["성명_한글"])
+        trash_applicant_folder_by_row(row.to_dict())
         delete_applicant_row(row["접수번호"])
         if progress_cb:
             progress_cb(i + 1, total)

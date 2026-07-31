@@ -28,7 +28,7 @@ def _styles():
     return normal, title, heading
 
 
-def generate_application_pdf(data: dict, photo_bytes: bytes = None) -> bytes:
+def generate_application_pdf(data: dict, photo_bytes: bytes = None, show_receipt_no: bool = True) -> bytes:
     """지원자 dict -> 지원서 표지 PDF(bytes) 생성. (담당자 제공 예시 서식을 최대한 따름)"""
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=15 * mm, bottomMargin=15 * mm,
@@ -42,7 +42,8 @@ def generate_application_pdf(data: dict, photo_bytes: bytes = None) -> bytes:
     story = []
 
     story.append(Paragraph(program_name, title))
-    story.append(Paragraph(f"접수번호 : {data.get('접수번호') or '-'}", right))
+    if show_receipt_no:
+        story.append(Paragraph(f"접수번호 : {data.get('접수번호') or '-'}", right))
     story.append(Spacer(1, 10))
 
     def p(txt):
@@ -60,31 +61,37 @@ def generate_application_pdf(data: dict, photo_bytes: bytes = None) -> bytes:
     t_school = data.get("편입_전적학교", "")
     is_transfer = bool(str(t_school).strip())
     t_admit_ym = data.get("편입_입학연월", "-") if is_transfer else "-"
-    t_school_major = f"{t_school} {data.get('편입_전공','')}".strip() if is_transfer else "-"
+    t_major = data.get("편입_전공", "-") if is_transfer else "-"
     t_gpa_str = (f"{data.get('편입_평점', '-')} / {data.get('편입_만점기준', '-')}"
                  if is_transfer else "-")
 
     # ── 지원자 정보 표 ──
+    # 학교명/전공명을 한 칸에 이어붙이면 좁은 칸 안에서 줄바꿈이 많아져 가독성이 떨어지므로,
+    # 각각 자기 줄에 따로 쓴다. (학력/편입 라벨은 관련된 줄 전체에 걸쳐 병합해서 표시)
     info_data = [
         [p("지원자"), p("성 명(한글)"), p(data.get("성명_한글")), p("성 별"), p(data.get("성별")), photo_cell],
         ["", p("성 명(영문)"), p(data.get("성명_영문")), p("생년월일"), p(data.get("생년월일")), ""],
         [p("지원 교수님\n및 연구실명"), p("1 지 망"), p(data.get("희망지도교수_1지망")), p("2 지 망"), p(data.get("희망지도교수_2지망")), ""],
-        [p("학 력"), p("입학연월"), p(data.get("입학연월")), p("학교/전공"),
-         p(f"{data.get('학교명','-')} {data.get('전공명','-')}"), ""],
+        [p("학 력"), p("입학연월"), p(data.get("입학연월")), p("학교명"), p(data.get("학교명")), ""],
+        ["", p("전공명"), p(data.get("전공명")), "", "", ""],
         ["", p("평점/만점"), p(gpa_str), "", "", ""],
-        [p("편입 시\n전적대학"), p("입학연월"), p(t_admit_ym), p("학교/전공"), p(t_school_major), ""],
+        [p("편입 시\n전적대학"), p("입학연월"), p(t_admit_ym), p("학교명"), p(t_school if is_transfer else "-"), ""],
+        ["", p("전공명"), p(t_major), "", "", ""],
         ["", p("평점/만점"), p(t_gpa_str), "", "", ""],
     ]
     t = Table(info_data, colWidths=[26 * mm, 24 * mm, 38 * mm, 24 * mm, 36 * mm, 32 * mm])
     t.setStyle(TableStyle([
         ("SPAN", (0, 0), (0, 1)),   # 지원자
-        ("SPAN", (5, 0), (5, 6)),  # 사진
-        ("SPAN", (0, 5), (0, 6)),  # 편입 시 전적대학
-        ("SPAN", (3, 4), (4, 4)),  # 평점/만점 행 오른쪽 빈칸 병합
-        ("SPAN", (3, 6), (4, 6)),  # 편입 평점/만점 행 오른쪽 빈칸 병합
+        ("SPAN", (5, 0), (5, 8)),  # 사진 (전체 행에 걸쳐 병합)
+        ("SPAN", (0, 3), (0, 5)),  # 학력 (입학연월/전공명/평점 3줄에 걸쳐 병합)
+        ("SPAN", (0, 6), (0, 8)),  # 편입 시 전적대학 (입학연월/전공명/평점 3줄에 걸쳐 병합)
+        ("SPAN", (3, 4), (4, 4)),  # 전공명 행 오른쪽 빈칸 병합
+        ("SPAN", (3, 5), (4, 5)),  # 평점/만점 행 오른쪽 빈칸 병합
+        ("SPAN", (3, 7), (4, 7)),  # 편입 전공명 행 오른쪽 빈칸 병합
+        ("SPAN", (3, 8), (4, 8)),  # 편입 평점/만점 행 오른쪽 빈칸 병합
         ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("ALIGN", (5, 0), (5, 6), "CENTER"),
+        ("ALIGN", (5, 0), (5, 8), "CENTER"),
         ("FONTNAME", (0, 0), (-1, -1), FONT),
         ("FONTSIZE", (0, 0), (-1, -1), 9),
         ("BACKGROUND", (0, 0), (0, -1), colors.whitesmoke),

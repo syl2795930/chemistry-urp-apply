@@ -205,8 +205,8 @@ def notice_board(notices, program):
         )
     html = (
         f'<div style="margin-top:34px;font-size:15px;font-weight:700;color:{b["primary_dark"]};margin-bottom:10px;'
-        'display:flex;align-items:center;gap:8px;">공지사항'
-        '<span style="font-size:12px;font-weight:400;color:#999;">진행 중이거나 예정된 프로그램을 참고하실 수 있어요</span></div>'
+        'display:flex;align-items:center;gap:8px;">다른 회차 소식'
+        '<span style="font-size:12px;font-weight:400;color:#999;">이번 모집 외에 진행 중이거나 예정된 다른 프로그램 소식이에요</span></div>'
         '<div style="background:#fff;border:1px solid #E7D6E2;border-radius:8px;overflow:hidden;">'
         + "".join(rows) +
         '</div>'
@@ -243,6 +243,81 @@ def notice_detail_card(program, detail):
         '</div>'
     )
     _render(html)
+
+
+def bar_list(title: str, counts: dict):
+    """교수님별 지원자 수 같은 걸 가로 막대그래프로 보여준다. counts: {라벨: 숫자}"""
+    b = config.BRAND
+    if not counts:
+        _render(f'<div style="font-size:13px;color:#999;">{title} - 데이터 없음</div>')
+        return
+    max_v = max(counts.values()) or 1
+    rows = "".join(
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
+        f'<div style="width:70px;font-size:12px;color:#333;flex-shrink:0;text-align:right;">{label}</div>'
+        f'<div style="flex:1;background:#F1E6EE;border-radius:4px;overflow:hidden;height:16px;">'
+        f'<div style="width:{max(6, int(v / max_v * 100))}%;background:{b["primary"]};height:100%;"></div></div>'
+        f'<div style="width:24px;font-size:12px;color:#333;flex-shrink:0;">{v}</div>'
+        '</div>'
+        for label, v in counts.items()
+    )
+    html = (
+        f'<div style="font-size:13px;font-weight:700;color:{b["primary_dark"]};margin-bottom:10px;">{title}</div>'
+        f'<div style="background:#fff;border:1px solid #E7D6E2;border-radius:8px;padding:14px 16px;">{rows}</div>'
+    )
+    _render(html)
+
+
+def summary_cards(items):
+    """전체 지원자 / 환산불가 / 중복 지원 의심 같은 요약 카드. items: [(label, value, note), ...]
+    클릭용이 아니라 순수 표시용 (클릭 필터는 버튼으로 별도 처리)."""
+    b = config.BRAND
+    cols = st.columns(len(items))
+    for col, (label, value, note) in zip(cols, items):
+        with col:
+            _render(
+                '<div style="background:#fff;border:1px solid '
+                f'{b["primary_light"]};border-radius:8px;padding:14px 16px;">'
+                f'<div style="font-size:12px;color:#888;margin-bottom:4px;">{label}</div>'
+                f'<div style="font-size:22px;font-weight:700;color:{b["primary_dark"]};">{value}</div>'
+                f'<div style="font-size:11px;color:#999;margin-top:2px;">{note}</div></div>'
+            )
+
+
+def quick_filter_card(label: str, value: str, note: str, key: str, active: bool) -> bool:
+    """전체보기/환산불가만보기 같은 요약 카드 자체를 버튼으로 만들어, 숫자나 카드 아무 곳이나
+    누르면 바로 필터가 적용되게 한다 (카드 따로 + 버튼 따로였던 것을 하나로 합침).
+    st.button의 라벨에 '\\n\\n'을 넣으면 문단이 두 개(<p> 두 개)로 나뉘어 렌더링되는 점을
+    이용해서, 첫 <p>는 큰 숫자로 / 나머지는 작은 라벨로 CSS를 나눠 입힌다."""
+    b = config.BRAND
+    with st.container(key=f"qfc_{key}"):
+        clicked = st.button(
+            f"{value}\n\n{label}\n\n{note}",
+            key=f"qfc_btn_{key}", use_container_width=True,
+            type=("primary" if active else "secondary"),
+        )
+    _render(
+        "<style>"
+        'div[class*="st-key-qfc_"] button {'
+        "height:auto !important; min-height:auto !important; text-align:left !important; "
+        "padding:14px 16px !important; border-radius:8px !important; white-space:normal !important; }"
+        'div[class*="st-key-qfc_"] button[kind="secondary"] {'
+        f'background:#fff !important; border:1px solid {b["primary_light"]} !important; }}'
+        'div[class*="st-key-qfc_"] button div[data-testid="stMarkdownContainer"] > p:nth-of-type(1) {'
+        f'font-size:22px !important; font-weight:700 !important; margin:0 0 2px 0 !important; color:{b["primary_dark"]} !important; }}'
+        'div[class*="st-key-qfc_"] button[kind="secondary"] div[data-testid="stMarkdownContainer"] > p:nth-of-type(1) {'
+        "color:#222 !important; }"
+        'div[class*="st-key-qfc_"] button div[data-testid="stMarkdownContainer"] > p:nth-of-type(2) {'
+        "font-size:12px !important; font-weight:600 !important; margin:0 !important; color:#666 !important; }"
+        'div[class*="st-key-qfc_"] button[kind="primary"] div[data-testid="stMarkdownContainer"] > p:nth-of-type(2) {'
+        "color:#fff !important; }"
+        'div[class*="st-key-qfc_"] button div[data-testid="stMarkdownContainer"] > p:nth-of-type(3) {'
+        "font-size:11px !important; margin:2px 0 0 0 !important; color:#999 !important; }"
+        'div[class*="st-key-qfc_"] button[kind="primary"] div[data-testid="stMarkdownContainer"] > p:nth-of-type(3) {'
+        "color:#F1DFEC !important; }"
+        "</style>"
+    )
+    return clicked
 
 
 def program_history_table(past_programs):

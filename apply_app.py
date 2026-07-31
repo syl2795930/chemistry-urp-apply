@@ -7,6 +7,7 @@
 회차(SURF/WURF)가 바뀌면 이 파일이 아니라 config.py의 값들을 고치세요.
 """
 import re
+import base64
 import datetime
 from pathlib import Path
 import streamlit as st
@@ -44,6 +45,16 @@ def _is_valid_email(v: str) -> bool:
     return bool(re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", str(v).strip()))
 
 
+def _render_pdf_viewer(pdf_b64: str, height: int = 760):
+    """다운로드 버튼 대신, 화면 안에서 바로 PDF를 볼 수 있게 iframe으로 띄운다.
+    (#toolbar=0 으로 브라우저 기본 PDF 뷰어의 다운로드/인쇄 아이콘도 최대한 숨긴다)"""
+    st.markdown(
+        f'<iframe src="data:application/pdf;base64,{pdf_b64}#toolbar=0&navpanes=0" '
+        f'width="100%" height="{height}" style="border:1px solid #E7D6E2;border-radius:8px;"></iframe>',
+        unsafe_allow_html=True,
+    )
+
+
 # ══════════════════════════ 홈 ══════════════════════════
 def page_home():
     p = config.PROGRAM
@@ -58,8 +69,8 @@ def page_home():
         ("합격자 발표", p["announce"], p.get("announce_note")),
     ])
 
-    theme.notice_board(config.NOTICES, p)
     theme.notice_detail_card(p, config.NOTICE_DETAIL)
+    theme.notice_board(config.NOTICES, p)
     theme.program_history_table(config.PAST_PROGRAMS)
 
 
@@ -133,14 +144,10 @@ def page_apply():
         st.info(f"문의사항은 {CONTACT_INFO} 로 연락 부탁드립니다.")
         pdf_bytes = st.session_state.get("submitted_pdf")
         if pdf_bytes:
-            st.download_button(
-                "제출하신 내용 PDF로 확인하기",
-                data=pdf_bytes,
-                file_name=f"{st.session_state.get('submitted_name','지원서')}_제출내용.pdf",
-                mime="application/pdf",
-                use_container_width=True,
-            )
-            st.caption("제출하신 지원서 내용(성적증명서·재학증명서 등 첨부서류 제외)을 PDF로 확인하실 수 있어요.")
+            st.markdown("**제출하신 내용 확인하기**")
+            b64 = base64.b64encode(pdf_bytes).decode()
+            _render_pdf_viewer(b64)
+            st.caption("제출하신 지원서 내용(성적증명서·재학증명서 등 첨부서류 제외)을 바로 확인하실 수 있어요.")
         return
 
     with st.container(key="apply_box"):
@@ -289,8 +296,8 @@ def page_apply():
         def _short_prof(p):
             return str(p).split(" 교수님")[0].strip()
 
-        # 지원자 폴더명: "이름_1.교수님2.교수님" + 동명이인 방지용 짧은 시각 태그
-        folder_key = (f"{name_kr}_1.{_short_prof(prof1)}2.{_short_prof(prof2)}"
+        # 지원자 폴더명: "이름_1.교수님_2.교수님" + 동명이인 방지용 짧은 시각 태그
+        folder_key = (f"{name_kr}_1.{_short_prof(prof1)}_2.{_short_prof(prof2)}"
                       f"_{datetime.datetime.now().strftime('%H%M%S')}")
 
         group, score43, grade = scoring.compute_score(school, scale, gpa)
@@ -344,23 +351,27 @@ def page_apply():
         row["접수번호"] = receipt_no
 
         try:
-            preview_pdf = pdf_gen.generate_application_pdf(row, photo_bytes=photo_bytes)
+            # 관리자 보관용(구글드라이브 병합본)에는 접수번호를 남기고,
+            admin_pdf = pdf_gen.generate_application_pdf(row, photo_bytes=photo_bytes, show_receipt_no=True)
+            # 학생이 화면에서 바로 보는 PDF에는 접수번호를 빼서 몇 번째 지원자인지 유추할 수 없게 한다.
+            student_pdf = pdf_gen.generate_application_pdf(row, photo_bytes=photo_bytes, show_receipt_no=False)
         except Exception:
-            preview_pdf = None
+            admin_pdf = None
+            student_pdf = None
 
         # 표지 + 성적증명서 + 재학증명서 + 기타증빙을 하나로 병합해서 드라이브에도 저장
         # (관리자님이 매번 화면에서 따로 생성 안 해도, 폴더에서 바로 받을 수 있게)
-        if preview_pdf:
+        if admin_pdf:
             try:
                 merged_pdf = pdf_gen.merge_pdfs(
-                    [preview_pdf, transcript_bytes, enrollment_bytes] + etc_bytes_list)
+                    [admin_pdf, transcript_bytes, enrollment_bytes] + etc_bytes_list)
                 gsheets.upload_applicant_file(
                     round_name, folder_key, "지원서_전체(병합본).pdf", merged_pdf, "application/pdf")
             except Exception:
                 pass
 
     st.session_state["submitted_ok"] = True
-    st.session_state["submitted_pdf"] = preview_pdf
+    st.session_state["submitted_pdf"] = student_pdf
     st.session_state["submitted_name"] = name_kr
     st.rerun()
 
