@@ -107,22 +107,28 @@ def topbar_with_nav(active_key: str, title: str = "POSTECH 화학과 연구참�
     """로고+제목(왼쪽)과 홈/지원하기/연구실/FAQ 텍스트 탭(오른쪽)을 한 줄에 배치.
     각 탭은 자기 전용 컨테이너(key)로 감싸서, 버튼끼리 영역이 겹치거나 클릭이 막히지 않도록 한다."""
     b = config.BRAND
-    left, *nav_cols = st.columns([2.4] + [0.55] * len(NAV_ITEMS))
-    with left:
-        _render(
-            '<div style="display:flex;align-items:center;gap:8px;padding-top:6px;">'
-            f'<img src="data:image/png;base64,{MASCOT_B64}" style="height:30px;width:auto;" />'
-            f'<span style="font-weight:700;font-size:15px;color:{b["primary_dark"]};white-space:nowrap;">{title}</span>'
-            '</div>'
-        )
-    for col, (key, label) in zip(nav_cols, NAV_ITEMS):
-        with col:
-            with st.container(key=f"navbtn_{key}"):
-                if st.button(label, key=f"navbtn_click_{key}", use_container_width=True):
-                    st.session_state["view"] = key
-                    st.rerun()
+    with st.container(key="topbar_row"):
+        left, *nav_cols = st.columns([2.4] + [0.55] * len(NAV_ITEMS))
+        with left:
+            _render(
+                '<div style="display:flex;align-items:center;gap:8px;">'
+                f'<img src="data:image/png;base64,{MASCOT_B64}" style="height:30px;width:auto;" />'
+                f'<span style="font-weight:700;font-size:15px;color:{b["primary_dark"]};white-space:nowrap;">{title}</span>'
+                '</div>'
+            )
+        for col, (key, label) in zip(nav_cols, NAV_ITEMS):
+            with col:
+                with st.container(key=f"navbtn_{key}"):
+                    if st.button(label, key=f"navbtn_click_{key}", use_container_width=True):
+                        st.session_state["view"] = key
+                        st.rerun()
     _render(
         "<style>"
+        f'.st-key-topbar_row {{ border-bottom:1px solid {b["primary_light"]}; '
+        "padding-bottom:10px; margin-bottom:16px; }"
+        '.st-key-topbar_row div[data-testid="stHorizontalBlock"] { align-items:center; }'
+        'div[class*="st-key-navbtn_"] { margin-bottom:0 !important; }'
+        'div[class*="st-key-navbtn_"] div[data-testid="stButton"] { margin-bottom:0 !important; }'
         'div[class*="st-key-navbtn_"] button {'
         "background:transparent !important; border:none !important; box-shadow:none !important;"
         "padding:6px 2px !important; color:#666 !important; font-weight:500 !important;"
@@ -134,7 +140,6 @@ def topbar_with_nav(active_key: str, title: str = "POSTECH 화학과 연구참�
         f"border-bottom:2px solid {b['primary']} !important; }}"
         "</style>"
     )
-    _render(f'<hr style="margin:8px 0 18px;border:none;border-top:1px solid {b["primary_light"]};" />')
 
 
 def info_cards(items):

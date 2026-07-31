@@ -74,19 +74,20 @@ def page_faq():
 
     st.markdown("**1:1 문의 게시판**")
     with st.expander("문의 작성하기"):
-        with st.form("qna_form", clear_on_submit=True):
-            q_name = st.text_input("이름 *")
-            q_pw = st.text_input("비밀번호 (선택, 나중에 본인 글 확인용)", type="password")
-            q_text = st.text_area("문의 내용 *", height=120)
-            q_submitted = st.form_submit_button("문의 등록", use_container_width=True)
+        q_name = st.text_input("이름 *", key="q_name")
+        set_pw = st.checkbox("비밀번호를 설정하시겠어요? (선택, 나중에 본인 글만 확인할 때 사용)", key="q_set_pw")
+        q_pw = st.text_input("비밀번호", type="password", key="q_pw") if set_pw else ""
+        q_text = st.text_area("문의 내용 *", height=120, key="q_text")
 
-        if q_submitted:
+        if st.button("문의 등록", use_container_width=True, key="q_submit_btn"):
             if not q_name.strip():
                 st.error("이름을 입력해주세요.")
             elif not q_text.strip():
                 st.error("문의 내용을 입력해주세요.")
             else:
                 gsheets.append_question(q_name.strip(), q_pw.strip(), q_text.strip())
+                for k in ["q_name", "q_set_pw", "q_pw", "q_text"]:
+                    st.session_state.pop(k, None)
                 st.success("문의가 등록되었습니다.")
                 st.rerun()
 
@@ -100,17 +101,17 @@ def page_faq():
     else:
         for _, r in qdf.sort_values("등록일시", ascending=False).iterrows():
             qid = str(r.get("id"))
+            has_pw = bool(str(r.get("비밀번호", "")).strip())
             status = "✅ 답변완료" if str(r.get("답변여부")) == "Y" else "⏳ 답변대기"
             unlock_key = f"qna_unlocked_{qid}"
             with st.expander(f"[{status}] {r.get('이름')} — {r.get('등록일시')}"):
-                if st.session_state.get(unlock_key):
+                if not has_pw or st.session_state.get(unlock_key):
                     st.write(r.get("질문", ""))
                     if str(r.get("답변여부")) == "Y":
                         st.markdown("**➡ 답변**")
                         st.write(r.get("답변", ""))
                 else:
-                    st.caption("본인이 남긴 문의인 경우, 등록하신 비밀번호를 입력하면 내용을 볼 수 있어요. "
-                               "(비밀번호를 입력하지 않고 등록하셨다면 비워두고 확인을 눌러주세요)")
+                    st.caption("본인이 남긴 문의인 경우, 등록하신 비밀번호를 입력하면 내용을 볼 수 있어요.")
                     pw_try = st.text_input("비밀번호", type="password", key=f"pw_try_{qid}")
                     if st.button("확인", key=f"pw_check_{qid}"):
                         if pw_try == str(r.get("비밀번호", "")):
@@ -185,7 +186,15 @@ def page_apply():
                     t_admit_ym = st.text_input("전적 학교 입학 연월")
 
             st.subheader("4. 관심분야 및 지원동기")
-            interests = st.multiselect("관심분야 *", ["유기화학", "무기화학", "물리화학", "분석화학", "고분자화학", "생화학"])
+            st.markdown("관심분야 *")
+            interest_options = ["유기화학", "무기화학", "물리화학", "분석화학", "고분자화학", "생화학"]
+            ic1, ic2, ic3 = st.columns(3)
+            interest_cols = [ic1, ic2, ic3, ic1, ic2, ic3]
+            interests = []
+            for opt, col in zip(interest_options, interest_cols):
+                with col:
+                    if st.checkbox(opt, key=f"interest_{opt}"):
+                        interests.append(opt)
             motivation = st.text_area("자기소개 및 지원동기 * (최대 2000자)", max_chars=2000, height=180)
 
             c14, c15 = st.columns(2)
@@ -198,8 +207,8 @@ def page_apply():
             st.subheader("5. 서류 제출")
             c16, c17 = st.columns(2)
             with c16:
-                f_transcript = st.file_uploader("성적증명서 (PDF, 문서확인번호 포함) *", type=["pdf"])
-                f_enrollment = st.file_uploader("재학증명서 (PDF, 2026년 3월 이후 발급) *", type=["pdf"])
+                f_transcript = st.file_uploader("성적증명서 (PDF) *", type=["pdf"])
+                f_enrollment = st.file_uploader("재학증명서 (PDF, 최근 1개월 이내 발급) *", type=["pdf"])
             with c17:
                 f_etc_list = st.file_uploader(
                     "기타 우수성 입증 증빙 (선택, PDF, 여러 개 첨부 가능)",
