@@ -121,11 +121,12 @@ def logo_title(title: str = "POSTECH 화학과 연구참여 프로그램", click
     underline = f"border-bottom:2px solid {b['primary']} !important;" if active else "border-bottom:2px solid transparent !important;"
     _render(
         "<style>"
+        '.st-key-logo_btn { margin-top:6px !important; }'
         '.st-key-logo_btn button {'
         "background:transparent !important; border:none !important; box-shadow:none !important; "
         "padding:6px 4px !important; min-height:auto !important; text-align:left !important; "
         f"{underline} }}"
-        '.st-key-logo_btn button p {'
+        '.st-key-logo_btn button, .st-key-logo_btn button * {'
         f"color:{b['primary']} !important; font-weight:700 !important; font-size:15px !important; }}"
         "</style>"
     )
@@ -142,7 +143,7 @@ def top_nav_simple(active_key: str) -> str:
             [0.4, 2.4, 0.62, 0.55, 0.4], gap="small")
         clicked = active_key
         with img_col:
-            _render(f'<img src="data:image/png;base64,{MASCOT_B64}" style="height:42px;width:auto;display:block;margin-top:2px;" />')
+            _render(f'<img src="data:image/png;base64,{MASCOT_B64}" style="height:42px;width:auto;display:block;margin-top:-6px;" />')
         with title_col:
             if logo_title(clickable=True, active=(active_key == "home")):
                 clicked = "home"
