@@ -328,9 +328,12 @@ def page_apply():
             round_name, folder_key, f"재학증명서{Path(f_enrollment.name).suffix}", enrollment_bytes, _mime_of(f_enrollment))
 
         etc_links = []
+        etc_bytes_list = []
         for i, f_etc in enumerate(f_etc_list or [], start=1):
+            eb = _read_bytes(f_etc)
+            etc_bytes_list.append(eb)
             link = gsheets.upload_applicant_file(
-                round_name, folder_key, f"기타증빙_{i}{Path(f_etc.name).suffix}", _read_bytes(f_etc), _mime_of(f_etc))
+                round_name, folder_key, f"기타증빙_{i}{Path(f_etc.name).suffix}", eb, _mime_of(f_etc))
             etc_links.append(link)
         row["기타자료_링크"] = "\n".join(etc_links)
 
@@ -344,6 +347,17 @@ def page_apply():
             preview_pdf = pdf_gen.generate_application_pdf(row, photo_bytes=photo_bytes)
         except Exception:
             preview_pdf = None
+
+        # 표지 + 성적증명서 + 재학증명서 + 기타증빙을 하나로 병합해서 드라이브에도 저장
+        # (관리자님이 매번 화면에서 따로 생성 안 해도, 폴더에서 바로 받을 수 있게)
+        if preview_pdf:
+            try:
+                merged_pdf = pdf_gen.merge_pdfs(
+                    [preview_pdf, transcript_bytes, enrollment_bytes] + etc_bytes_list)
+                gsheets.upload_applicant_file(
+                    round_name, folder_key, "지원서_전체(병합본).pdf", merged_pdf, "application/pdf")
+            except Exception:
+                pass
 
     st.session_state["submitted_ok"] = True
     st.session_state["submitted_pdf"] = preview_pdf

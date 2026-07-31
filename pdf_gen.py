@@ -22,9 +22,9 @@ FONT = "HYSMyeongJo-Medium"
 
 def _styles():
     ss = getSampleStyleSheet()
-    normal = ParagraphStyle("normal_kr", parent=ss["Normal"], fontName=FONT, fontSize=10, leading=14)
-    title = ParagraphStyle("title_kr", parent=ss["Title"], fontName=FONT, fontSize=16, leading=20)
-    heading = ParagraphStyle("heading_kr", parent=ss["Heading2"], fontName=FONT, fontSize=12, leading=16)
+    normal = ParagraphStyle("normal_kr", parent=ss["Normal"], fontName=FONT, fontSize=10, leading=14, wordWrap="CJK")
+    title = ParagraphStyle("title_kr", parent=ss["Title"], fontName=FONT, fontSize=16, leading=20, wordWrap="CJK")
+    heading = ParagraphStyle("heading_kr", parent=ss["Heading2"], fontName=FONT, fontSize=12, leading=16, wordWrap="CJK")
     return normal, title, heading
 
 
@@ -34,9 +34,9 @@ def generate_application_pdf(data: dict, photo_bytes: bytes = None) -> bytes:
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=15 * mm, bottomMargin=15 * mm,
                              leftMargin=15 * mm, rightMargin=15 * mm)
     normal, title, heading = _styles()
-    small = ParagraphStyle("small_kr", parent=normal, fontSize=8, leading=11)
-    center = ParagraphStyle("center_kr", parent=normal, alignment=1)
-    right = ParagraphStyle("right_kr", parent=normal, alignment=2)
+    small = ParagraphStyle("small_kr", parent=normal, fontSize=8, leading=11, wordWrap="CJK")
+    center = ParagraphStyle("center_kr", parent=normal, alignment=1, wordWrap="CJK")
+    right = ParagraphStyle("right_kr", parent=normal, alignment=2, wordWrap="CJK")
 
     program_name = "2026년도 하계 우수대학원생유치프로그램 연구참여 지원서"
     story = []
@@ -75,8 +75,7 @@ def generate_application_pdf(data: dict, photo_bytes: bytes = None) -> bytes:
         [p("편입 시\n전적대학"), p("입학연월"), p(t_admit_ym), p("학교/전공"), p(t_school_major), ""],
         ["", p("평점/만점"), p(t_gpa_str), "", "", ""],
     ]
-    t = Table(info_data, colWidths=[26 * mm, 24 * mm, 38 * mm, 24 * mm, 36 * mm, 32 * mm],
-              rowHeights=[11 * mm, 11 * mm, 13 * mm, 11 * mm, 11 * mm, 11 * mm, 11 * mm])
+    t = Table(info_data, colWidths=[26 * mm, 24 * mm, 38 * mm, 24 * mm, 36 * mm, 32 * mm])
     t.setStyle(TableStyle([
         ("SPAN", (0, 0), (0, 1)),   # 지원자
         ("SPAN", (5, 0), (5, 6)),  # 사진
@@ -98,11 +97,10 @@ def generate_application_pdf(data: dict, photo_bytes: bytes = None) -> bytes:
     extra_data = [
         [p("관심분야"), p(data.get("관심분야")), p("대학원 진학\n희망여부"), p(data.get("대학원진학희망"))],
         [p("지원동기"), Paragraph(str(data.get("지원동기", "-")).replace("\n", "<br/>"), small), "", ""],
-        [p("연락처"), p(f"휴대폰: {data.get('휴대폰번호','-')}\nE-mail: {data.get('이메일','-')}"),
+        [p("연락처"), Paragraph(f"휴대폰: {data.get('휴대폰번호','-')}<br/>E-mail: {data.get('이메일','-')}", normal),
          p("기숙사\n사용여부"), p(data.get("기숙사사용"))],
     ]
-    t2 = Table(extra_data, colWidths=[26 * mm, 84 * mm, 30 * mm, 40 * mm],
-               rowHeights=[11 * mm, 28 * mm, 14 * mm])
+    t2 = Table(extra_data, colWidths=[26 * mm, 84 * mm, 30 * mm, 40 * mm])
     t2.setStyle(TableStyle([
         ("SPAN", (1, 1), (3, 1)),
         ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
