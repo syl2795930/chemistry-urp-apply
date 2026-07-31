@@ -335,7 +335,10 @@ def page_apply():
 if "view" not in st.session_state:
     st.session_state["view"] = "home"
 
-st.session_state["view"] = theme.top_nav_simple(st.session_state["view"])
+new_view = theme.top_nav_simple(st.session_state["view"])
+if new_view != st.session_state["view"]:
+    st.session_state["view"] = new_view
+    st.rerun()
 
 view = st.session_state["view"]
 if view == "apply":

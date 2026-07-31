@@ -106,28 +106,24 @@ NAV_ITEMS = [("home", "홈"), ("apply", "지원하기"), ("labs", "연구실"), 
 
 
 def logo_title(title: str = "POSTECH 화학과 연구참여 프로그램", clickable: bool = False) -> bool:
-    """마스코트(장식용) + 제목. clickable=True면 제목 텍스트가 버튼이 되어 누르면 True를 반환한다."""
+    """제목 (클릭 가능 시 홈으로 이동하는 버튼이 됨). 마스코트는 히어로 박스에 이미 있어서
+    상단에서는 빼고, 다른 탭 버튼들과 정렬이 흐트러지지 않게 텍스트만 둔다."""
     b = config.BRAND
     if not clickable:
         _render(
-            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">'
-            f'<img src="data:image/png;base64,{MASCOT_B64}" style="height:30px;width:auto;" />'
-            f'<span style="font-weight:700;font-size:15px;color:{b["primary_dark"]};white-space:nowrap;">{title}</span>'
-            '</div>'
+            f'<div style="font-weight:700;font-size:15px;color:{b["primary_dark"]};'
+            'white-space:nowrap;margin-bottom:16px;">' + title + '</div>'
         )
         return False
 
-    img_col, title_col = st.columns([0.09, 0.91])
-    with img_col:
-        _render(f'<img src="data:image/png;base64,{MASCOT_B64}" style="height:30px;width:auto;margin-top:4px;" />')
-    with title_col:
-        with st.container(key="logo_btn"):
-            clicked = st.button(title, key="nav_logo")
+    with st.container(key="logo_btn"):
+        clicked = st.button(title, key="nav_logo")
     _render(
         "<style>"
         '.st-key-logo_btn button {'
         "background:transparent !important; border:none !important; box-shadow:none !important; "
-        f"padding:6px 4px !important; min-height:auto !important; text-align:left !important; }}"
+        "padding:6px 4px !important; min-height:auto !important; text-align:left !important; "
+        "border-bottom:2px solid transparent !important; }"
         '.st-key-logo_btn button p {'
         f"color:{b['primary_dark']} !important; font-weight:700 !important; font-size:15px !important; }}"
         "</style>"
