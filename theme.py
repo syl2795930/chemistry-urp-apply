@@ -40,7 +40,8 @@ def inject():
         f'.st-key-apply_box {{ border:1px solid {b["primary_light"]}; border-radius:10px; '
         "padding:20px 24px 4px 24px; background:#fff; margin-bottom:16px; }"
         'header[data-testid="stHeader"] { background-color: transparent; pointer-events: none; }'
-        'header[data-testid="stHeader"] * { pointer-events: auto; }'
+        'div[data-testid="stToolbar"] { pointer-events: none; }'
+        'header[data-testid="stHeader"] button, header[data-testid="stHeader"] a { pointer-events: auto; }'
         "h1, h2, h3 { color: " + b['primary_dark'] + " !important; }"
         '.stButton>button[kind="primary"], .stFormSubmitButton>button[kind="primary"], button[kind="primary"] {'
         f"background-color:{b['primary']};border-color:{b['primary']};border-radius:8px;font-weight:600; }}"
