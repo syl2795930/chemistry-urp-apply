@@ -101,45 +101,49 @@ def topbar(title: str = "POSTECH 화학과 연구참여 프로그램"):
 
 
 NAV_ITEMS = [("home", "홈"), ("apply", "지원하기"), ("labs", "연구실"), ("faq", "FAQ")]
+NAV_LABELS = dict(NAV_ITEMS)
+NAV_KEYS = [k for k, _ in NAV_ITEMS]
 
 
-def topbar_with_nav(active_key: str, title: str = "POSTECH 화학과 연구참여 프로그램"):
-    """로고+제목(왼쪽)과 홈/지원하기/연구실/FAQ 텍스트 탭(오른쪽)을 한 줄에 배치.
-    각 탭은 자기 전용 컨테이너(key)로 감싸서, 버튼끼리 영역이 겹치거나 클릭이 막히지 않도록 한다."""
+def topbar_with_nav(active_key: str, title: str = "POSTECH 화학과 연구참여 프로그램") -> str:
+    """로고+제목(왼쪽)과 홈/지원하기/연구실/FAQ 탭(오른쪽)을 한 줄에 배치.
+    여러 개의 st.button 대신 st.radio 위젯 '하나'로 구현한다 (버튼을 여러 개 늘어놓으면
+    요소끼리 살짝 겹쳐서 특정 지점만 클릭되는 문제가 있었음 - 위젯을 하나로 줄여서 근본적으로 제거).
+    반환값은 현재 선택된 view 키."""
     b = config.BRAND
+    if "view" not in st.session_state:
+        st.session_state["view"] = active_key
     with st.container(key="topbar_row"):
-        left, *nav_cols = st.columns([2.4] + [0.55] * len(NAV_ITEMS))
+        left, right = st.columns([2.2, 3])
         with left:
             _render(
-                '<div style="display:flex;align-items:center;gap:8px;">'
+                '<div style="display:flex;align-items:center;gap:8px;padding-top:6px;">'
                 f'<img src="data:image/png;base64,{MASCOT_B64}" style="height:30px;width:auto;" />'
                 f'<span style="font-weight:700;font-size:15px;color:{b["primary_dark"]};white-space:nowrap;">{title}</span>'
                 '</div>'
             )
-        for col, (key, label) in zip(nav_cols, NAV_ITEMS):
-            with col:
-                with st.container(key=f"navbtn_{key}"):
-                    if st.button(label, key=f"navbtn_click_{key}", use_container_width=True):
-                        st.session_state["view"] = key
-                        st.rerun()
+        with right:
+            selected = st.radio(
+                "페이지 이동", NAV_KEYS, format_func=lambda k: NAV_LABELS[k],
+                horizontal=True, label_visibility="collapsed", key="view",
+            )
     _render(
         "<style>"
         f'.st-key-topbar_row {{ border-bottom:1px solid {b["primary_light"]}; '
-        "padding-bottom:10px; margin-bottom:16px; }"
+        "padding-bottom:6px; margin-bottom:16px; }"
         '.st-key-topbar_row div[data-testid="stHorizontalBlock"] { align-items:center; }'
-        'div[class*="st-key-navbtn_"] { margin-bottom:0 !important; }'
-        'div[class*="st-key-navbtn_"] div[data-testid="stButton"] { margin-bottom:0 !important; }'
-        'div[class*="st-key-navbtn_"] button {'
-        "background:transparent !important; border:none !important; box-shadow:none !important;"
-        "padding:6px 2px !important; color:#666 !important; font-weight:500 !important;"
-        "border-radius:0 !important; border-bottom:2px solid transparent !important; }"
-        'div[class*="st-key-navbtn_"] button:hover {'
-        f"color:{b['primary']} !important; }}"
-        f".st-key-navbtn_{active_key} button {{"
-        f"color:{b['primary']} !important; font-weight:700 !important;"
-        f"border-bottom:2px solid {b['primary']} !important; }}"
+        '.st-key-topbar_row div[role="radiogroup"] { justify-content:flex-end; gap:4px; }'
+        '.st-key-topbar_row div[role="radiogroup"] label { '
+        "background:transparent !important; border:none !important; padding:4px 10px !important; "
+        "margin:0 !important; }"
+        '.st-key-topbar_row div[role="radiogroup"] label > div:first-child { display:none; }'
+        '.st-key-topbar_row div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] p {'
+        "color:#666 !important; font-weight:500 !important; font-size:14px !important; }"
+        '.st-key-topbar_row div[role="radiogroup"] label[aria-checked="true"] div[data-testid="stMarkdownContainer"] p {'
+        f"color:{b['primary']} !important; font-weight:700 !important;}}"
         "</style>"
     )
+    return selected
 
 
 def info_cards(items):

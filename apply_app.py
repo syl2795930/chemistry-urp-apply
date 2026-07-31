@@ -332,12 +332,8 @@ def page_apply():
 
 
 # ══════════════════════════ 라우팅 (관리자 탭 없음) ══════════════════════════
-if "view" not in st.session_state:
-    st.session_state["view"] = "home"
+view = theme.topbar_with_nav(active_key=st.session_state.get("view", "home"))
 
-theme.topbar_with_nav(active_key=st.session_state["view"])
-
-view = st.session_state["view"]
 if view == "apply":
     page_apply()
 elif view == "labs":
