@@ -110,7 +110,7 @@ def logo_title():
     제목은 실제 링크(a 태그)라 색이 100% 보장되고, href로 이동하니 클릭도 확실하다."""
     b = config.BRAND
     _render(
-        '<div style="display:flex;align-items:center;gap:6px;">'
+        '<div style="display:flex;align-items:center;gap:6px;margin-top:-10px;">'
         f'<img src="data:image/png;base64,{MASCOT_B64}" style="height:34px;width:auto;display:block;margin-top:-8px;" />'
         f'<a href="?nav=home" style="font-weight:700;font-size:15px;color:{b["primary"]};'
         'text-decoration:none;white-space:nowrap;">POSTECH 화학과 연구참여 프로그램</a>'
