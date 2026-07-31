@@ -144,7 +144,8 @@ def top_nav_simple(active_key: str) -> str:
         '.st-key-topbar_row div[data-testid="stHorizontalBlock"] > div:first-child button {'
         f'background-image:url(data:image/png;base64,{MASCOT_B64}) !important; '
         "background-repeat:no-repeat !important; background-position:4px center !important; "
-        "background-size:30px 30px !important; padding-left:42px !important; }"
+        "background-size:30px 30px !important; padding-left:42px !important; "
+        "border-bottom:2px solid transparent !important; }"
         "</style>"
     )
     return clicked
