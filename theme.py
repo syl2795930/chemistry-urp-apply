@@ -127,7 +127,7 @@ def top_nav_simple(active_key: str) -> str:
             [0.4, 2.4, 0.62, 0.55, 0.4], gap="small")
         clicked = active_key
         with img_col:
-            _render(f'<img src="data:image/png;base64,{MASCOT_B64}" style="height:28px;width:auto;display:block;margin:0;" />')
+            _render(f'<img src="data:image/png;base64,{MASCOT_B64}" style="height:36px;width:auto;display:block;margin:-4px 0 0 0;" />')
         with title_col:
             logo_title()
         with c2:
