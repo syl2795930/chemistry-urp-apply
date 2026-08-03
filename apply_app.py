@@ -339,6 +339,7 @@ def page_apply():
             "기숙사사용": dorm, "지원동기": motivation,
             "개인정보_필수": consent_required, "개인정보_선택": "",
             "서류합격여부": doc_pass, "1지망선발여부": "", "비고": "",
+            "편입_대학군": t_group, "편입_4.3환산": t_score43, "편입_환산성적": t_grade,
         }
 
         # 파일 업로드 (구글드라이브)

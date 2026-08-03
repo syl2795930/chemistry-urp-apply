@@ -11,6 +11,7 @@ import base64
 import io
 import re
 import streamlit as st
+import plotly.graph_objects as go
 import streamlit.components.v1 as components
 import config
 
@@ -73,7 +74,7 @@ def program_badge(round_key: str):
     b = config.BRAND
     _render(
         f'<div style="display:inline-block;background:{b["page_bg"]};border:1px solid {b["primary_light"]};'
-        f'border-radius:999px;padding:6px 16px;margin-bottom:16px;font-size:13px;font-weight:700;'
+        f'border-radius:999px;padding:5px 14px;margin-bottom:10px;font-size:12px;font-weight:700;'
         f'color:{b["primary_dark"]};">지원 프로그램 · {round_key}</div>'
     )
 
@@ -88,13 +89,17 @@ def inject():
     css = (
         "<style>"
         f".stApp {{ background-color: {b['page_bg']}; }}"
-        ".block-container { max-width: 1150px; margin: 0 auto; padding-top: 0.4rem; }"
+        ".block-container { max-width: 1150px; margin: 0 auto; padding-top: 0.2rem; }"
+        'div[data-testid="stVerticalBlock"] { gap: 0.5rem; }'
         f'.st-key-apply_box {{ border:1px solid {b["primary_light"]}; border-radius:10px; '
         "padding:20px 24px 4px 24px; background:#fff; margin-bottom:16px; }"
         'header[data-testid="stHeader"] { background-color: transparent; pointer-events: none; }'
         'div[data-testid="stToolbar"] { pointer-events: none; }'
         'header[data-testid="stHeader"] button, header[data-testid="stHeader"] a { pointer-events: auto; }'
         "h1, h2, h3 { color: " + b['primary_dark'] + " !important; }"
+        "h1 { font-size: 1.7rem !important; margin-bottom:0.3rem !important; }"
+        "h2 { font-size: 1.3rem !important; margin-bottom:0.3rem !important; }"
+        "h3 { font-size: 1.05rem !important; margin-bottom:0.2rem !important; }"
         '.stButton>button[kind="primary"], .stFormSubmitButton>button[kind="primary"], button[kind="primary"] {'
         f"background-color:{b['primary']};border-color:{b['primary']};border-radius:8px;font-weight:600; }}"
         '.stButton>button[kind="primary"]:hover, .stFormSubmitButton>button[kind="primary"]:hover, button[kind="primary"]:hover {'
@@ -303,32 +308,39 @@ def notice_detail_card(program, detail):
     _render(html)
 
 
-def clickable_bar_list(title: str, counts: dict, state_key: str):
-    """예전의 장식용 막대그래프(bar_list)를 대체 — 막대처럼 보이면서 실제로 눌러서 선택할 수 있다.
-    이름/막대/숫자 아무 곳이나 누르면 그 항목이 선택되고(다시 누르면 선택 해제),
+def clickable_bar_chart(title: str, counts: dict, state_key: str):
+    """진짜 막대그래프(plotly)로 그리고, 막대를 클릭하면 그 항목이 선택되게 한다.
     선택된 값은 st.session_state[state_key]에 저장한다 (호출부에서 읽어서 목록을 보여줄 것)."""
     b = config.BRAND
     st.markdown(f"**{title}**")
     if not counts:
         st.caption("데이터가 없어요.")
         return
-    max_v = max(counts.values())
-    for name, v in sorted(counts.items()):
-        pct = max(10, int(v / max_v * 100)) if max_v else 10
-        safe_key = re.sub(r"[^0-9a-zA-Z가-힣]", "_", f"{state_key}_{name}")
-        active = st.session_state.get(state_key) == name
-        with st.container(key=f"cbl_{safe_key}"):
-            if st.button(f"{name}   {v}명", key=f"cbl_btn_{safe_key}", use_container_width=True,
-                         type=("primary" if active else "secondary")):
-                st.session_state[state_key] = None if active else name
-                st.rerun()
-        _render(
-            "<style>"
-            f'.st-key-cbl_{safe_key} button {{ text-align:left !important; '
-            f'background:linear-gradient(to right, {b["primary_light"]} {pct}%, #fff {pct}%) !important; '
-            "border:1px solid #eee !important; }"
-            "</style>"
-        )
+    items = sorted(counts.items(), key=lambda kv: kv[1])  # 값이 큰 게 위로 오도록 오름차순으로 넣는다
+    names = [k for k, _ in items]
+    values = [v for _, v in items]
+    fig = go.Figure(go.Bar(
+        x=values, y=names, orientation="h",
+        marker_color=b["primary"],
+        text=values, textposition="outside",
+        hovertemplate="%{y} — %{x}명<extra></extra>",
+    ))
+    fig.update_layout(
+        height=max(160, 42 * len(items) + 40),
+        margin=dict(l=10, r=30, t=10, b=30),
+        xaxis=dict(showgrid=True, gridcolor="#eee", zeroline=False, dtick=1),
+        yaxis=dict(showgrid=False),
+        plot_bgcolor="white", paper_bgcolor="white",
+        font=dict(size=13),
+    )
+    event = st.plotly_chart(fig, use_container_width=True, on_select="rerun", key=f"chart_{state_key}")
+    points = (event or {}).get("selection", {}).get("points", [])
+    if points:
+        st.session_state[state_key] = points[0]["y"]
+    if st.session_state.get(state_key):
+        if st.button(f"✕ {st.session_state[state_key]} 목록 닫기", key=f"close_{state_key}"):
+            st.session_state[state_key] = None
+            st.rerun()
 
 
 def bar_list(title: str, counts: dict):
