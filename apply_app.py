@@ -11,6 +11,7 @@ import base64
 import datetime
 from pathlib import Path
 import streamlit as st
+import streamlit.components.v1 as components
 
 import scoring
 import gsheets
@@ -53,12 +54,23 @@ def _submitted_pdf_dialog(pdf_bytes: bytes):
 
 
 def _render_pdf_viewer(pdf_b64: str, height: int = 760):
-    """다운로드 버튼 대신, 화면 안에서 바로 PDF를 볼 수 있게 iframe으로 띄운다.
-    (#toolbar=0 으로 브라우저 기본 PDF 뷰어의 다운로드/인쇄 아이콘도 최대한 숨긴다)"""
-    st.markdown(
-        f'<iframe src="data:application/pdf;base64,{pdf_b64}#toolbar=0&navpanes=0" '
-        f'width="100%" height="{height}" style="border:1px solid #E7D6E2;border-radius:8px;"></iframe>',
-        unsafe_allow_html=True,
+    """다운로드 버튼 대신, 화면 안에서 바로 PDF를 볼 수 있게 띄운다.
+    data: URI를 iframe에 바로 넣는 방식은 브라우저/보안정책(CSP)에 막혀서 빈 문서 아이콘만
+    뜨는 경우가 있어서, base64를 blob으로 변환해 embed 태그에 넣는 방식으로 우회한다."""
+    components.html(
+        "<embed id='pdf_embed' type='application/pdf' width='100%' height='" + str(height) + "' "
+        "style='border:1px solid #E7D6E2;border-radius:8px;'>"
+        "<script>"
+        f"const b64 = '{pdf_b64}';"
+        "const byteChars = atob(b64);"
+        "const byteNumbers = new Array(byteChars.length);"
+        "for (let i = 0; i < byteChars.length; i++) { byteNumbers[i] = byteChars.charCodeAt(i); }"
+        "const byteArray = new Uint8Array(byteNumbers);"
+        "const blob = new Blob([byteArray], {type: 'application/pdf'});"
+        "const url = URL.createObjectURL(blob);"
+        "document.getElementById('pdf_embed').src = url;"
+        "</script>",
+        height=height + 10,
     )
 
 
