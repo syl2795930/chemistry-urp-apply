@@ -81,7 +81,7 @@ def inject():
     css = (
         "<style>"
         f".stApp {{ background-color: {b['page_bg']}; }}"
-        ".block-container { max-width: 1150px; margin: 0 auto; padding-top: 1.2rem; }"
+        ".block-container { max-width: 1150px; margin: 0 auto; padding-top: 0.8rem; }"
         f'.st-key-apply_box {{ border:1px solid {b["primary_light"]}; border-radius:10px; '
         "padding:20px 24px 4px 24px; background:#fff; margin-bottom:16px; }"
         'header[data-testid="stHeader"] { background-color: transparent; pointer-events: none; }'
@@ -174,23 +174,25 @@ def top_nav_simple(active_key: str) -> str:
     _render(
         "<style>"
         f'.st-key-topbar_row {{ border-bottom:1px solid {b["primary_light"]}; '
-        "padding-bottom:2px; margin-bottom:18px; }"
+        "padding-bottom:2px; margin-bottom:10px; }"
         '.st-key-topbar_row div[data-testid="stHorizontalBlock"] { align-items:center; }'
         '.st-key-topbar_row button[kind="primary"], .st-key-topbar_row button[kind="secondary"] {'
         "background:transparent !important; border:none !important; box-shadow:none !important; "
         "border-radius:0 !important; padding:6px 4px !important; min-height:auto !important; "
         "border-bottom:2px solid transparent !important; }"
         '.st-key-topbar_row button[kind="secondary"] p {'
-        "color:#666 !important; font-weight:500 !important; }"
+        "color:#666 !important; font-weight:500 !important; font-size:15px !important; }"
         '.st-key-topbar_row button[kind="primary"] {'
         f"border-bottom:2px solid {b['primary']} !important; }}"
         '.st-key-topbar_row button[kind="primary"] p {'
-        f"color:{b['primary']} !important; font-weight:700 !important; }}"
+        f"color:{b['primary']} !important; font-weight:700 !important; font-size:15px !important; }}"
         '.st-key-topbar_row div[data-testid="stHorizontalBlock"] > div:first-child button {'
         f'background-image:url(data:image/png;base64,{MASCOT_B64}) !important; '
-        "background-repeat:no-repeat !important; background-position:4px center !important; "
-        "background-size:30px 30px !important; padding-left:42px !important; "
+        "background-repeat:no-repeat !important; background-position:2px center !important; "
+        "background-size:34px 34px !important; padding-left:46px !important; "
         "border-bottom:2px solid transparent !important; }"
+        '.st-key-topbar_row div[data-testid="stHorizontalBlock"] > div:first-child button p {'
+        "font-size:18px !important; font-weight:700 !important; }"
         "</style>"
     )
     return clicked
