@@ -45,6 +45,13 @@ def _is_valid_email(v: str) -> bool:
     return bool(re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", str(v).strip()))
 
 
+@st.dialog("제출하신 내용 확인", width="large")
+def _submitted_pdf_dialog(pdf_bytes: bytes):
+    b64 = base64.b64encode(pdf_bytes).decode()
+    _render_pdf_viewer(b64, height=680)
+    st.caption("성적증명서·재학증명서 등 첨부서류는 포함되어 있지 않아요.")
+
+
 def _render_pdf_viewer(pdf_b64: str, height: int = 760):
     """다운로드 버튼 대신, 화면 안에서 바로 PDF를 볼 수 있게 iframe으로 띄운다.
     (#toolbar=0 으로 브라우저 기본 PDF 뷰어의 다운로드/인쇄 아이콘도 최대한 숨긴다)"""
@@ -145,10 +152,8 @@ def page_apply():
         st.info(f"문의사항은 {CONTACT_INFO} 로 연락 부탁드립니다.")
         pdf_bytes = st.session_state.get("submitted_pdf")
         if pdf_bytes:
-            st.markdown("**제출하신 내용 확인하기**")
-            b64 = base64.b64encode(pdf_bytes).decode()
-            _render_pdf_viewer(b64)
-            st.caption("제출하신 지원서 내용(성적증명서·재학증명서 등 첨부서류 제외)을 바로 확인하실 수 있어요.")
+            if st.button("제출하신 내용 확인하기", use_container_width=True):
+                _submitted_pdf_dialog(pdf_bytes)
         return
 
     with st.container(key="apply_box"):
@@ -292,7 +297,7 @@ def page_apply():
 
     with st.spinner("제출 처리 중입니다... (파일 업로드에 시간이 걸릴 수 있어요)"):
         # 회차별 상위 폴더 (예: "2026_SURF") - 구글드라이브 안에서 회차별로 자동으로 나뉩니다.
-        round_name = f"{datetime.datetime.now().year}_{config.PROGRAM['short_name']}"
+        round_name = config.PROGRAM["round_key"]
 
         def _short_prof(p):
             return str(p).split(" 교수님")[0].strip()
@@ -310,7 +315,7 @@ def page_apply():
 
         now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         row = {
-            "접수번호": "", "제출일시": now, "프로그램구분": config.PROGRAM["short_name"],
+            "접수번호": "", "제출일시": now, "프로그램구분": config.PROGRAM["round_key"],
             "성명_한글": name_kr, "성명_영문": name_en, "생년월일": birth, "성별": gender,
             "휴대폰번호": phone, "이메일": email,
             "희망지도교수_1지망": prof1, "희망지도교수_2지망": prof2,

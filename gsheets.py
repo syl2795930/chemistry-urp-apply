@@ -107,6 +107,7 @@ def _get_worksheet():
     return ws
 
 
+@st.cache_data(ttl=20, show_spinner=False)
 def read_all_df() -> pd.DataFrame:
     ws = _get_worksheet()
     records = ws.get_all_records()
@@ -117,6 +118,11 @@ def read_all_df() -> pd.DataFrame:
         if c not in df.columns:
             df[c] = ""
     return df[HEADERS]
+
+
+def clear_cache():
+    """지원자 정보를 수정/삭제한 직후 등, 방금 바뀐 내용을 바로 화면에 반영해야 할 때 호출."""
+    read_all_df.clear()
 
 
 def append_applicant(row: dict) -> str:
