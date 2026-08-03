@@ -44,6 +44,17 @@ def inject_css(css: str):
     _render(f"<style>{css}</style>")
 
 
+def program_badge(round_key: str):
+    """지원서 작성 화면 맨 위, 큰 입력칸 대신 작은 배지로 지금 몇 회차 접수 중인지 보여준다.
+    (필수 입력칸처럼 보여서 첫 질문과 헷갈리지 않게, 그러면서도 눈에 잘 띄게 진한 글씨로)"""
+    b = config.BRAND
+    _render(
+        f'<div style="display:inline-block;background:{b["page_bg"]};border:1px solid {b["primary_light"]};'
+        f'border-radius:999px;padding:6px 16px;margin-bottom:16px;font-size:13px;font-weight:700;'
+        f'color:{b["primary_dark"]};">지원 프로그램 · {round_key}</div>'
+    )
+
+
 def inline_error(text: str):
     """st.error()는 글자가 커서, 입력폼 실시간 검증용으로 작은 빨간 글씨 경고를 대신 쓴다."""
     _render(f'<div style="color:#D33;font-size:12px;margin:-8px 0 8px 2px;">⚠ {text}</div>')
