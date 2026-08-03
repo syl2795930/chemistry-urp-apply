@@ -98,7 +98,7 @@ def page_labs():
 
 # ══════════════════════════ FAQ ══════════════════════════
 def page_faq():
-    st.markdown("## FAQ · Q&A")
+    st.header("FAQ · Q&A")
     st.caption("자주 묻는 질문과, 지원자분들이 남긴 문의를 한 페이지에서 확인하실 수 있어요.")
 
     theme.faq_accordion(config.FAQ_ITEMS)

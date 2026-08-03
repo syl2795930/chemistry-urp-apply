@@ -9,6 +9,7 @@ apply_app.py, admin_app.py 양쪽에서 똑같이 불러다 씁니다.
 """
 import base64
 import io
+import re
 import streamlit as st
 import streamlit.components.v1 as components
 import config
@@ -24,12 +25,18 @@ def mascot_icon():
 
 def scroll_to_top():
     """홈↔지원하기 등 화면을 전환할 때, 이전 화면에서 내려가 있던 스크롤 위치가 그대로 남아
-    새 화면이 중간부터 보이는 문제가 있어서, 화면이 바뀔 때 맨 위로 강제로 스크롤한다."""
+    새 화면이 중간부터 보이는 문제가 있어서, 화면이 바뀔 때 맨 위로 강제로 스크롤한다.
+    화면 전환 직후엔 아래쪽 내용이 아직 다 그려지지 않은 상태라 스크롤 명령이 씹히는 경우가
+    있어서, 한 번만 실행하지 않고 짧은 시간차를 두고 여러 번 반복 실행해 확실히 맨 위로 보낸다."""
     components.html(
-        "<script>const d=window.parent.document;"
+        "<script>"
+        "function goTop(){const d=window.parent.document;"
         "const m=d.querySelector('[data-testid=\"stMain\"]')||d.querySelector('section.main')||d.scrollingElement;"
         "if(m){m.scrollTo({top:0,behavior:'instant'});}"
-        "window.parent.scrollTo(0,0);</script>",
+        "window.parent.scrollTo(0,0);}"
+        "goTop();"
+        "[50,150,300,600].forEach(t=>setTimeout(goTop,t));"
+        "</script>",
         height=0,
     )
 
@@ -81,7 +88,7 @@ def inject():
     css = (
         "<style>"
         f".stApp {{ background-color: {b['page_bg']}; }}"
-        ".block-container { max-width: 1150px; margin: 0 auto; padding-top: 0.8rem; }"
+        ".block-container { max-width: 1150px; margin: 0 auto; padding-top: 0.4rem; }"
         f'.st-key-apply_box {{ border:1px solid {b["primary_light"]}; border-radius:10px; '
         "padding:20px 24px 4px 24px; background:#fff; margin-bottom:16px; }"
         'header[data-testid="stHeader"] { background-color: transparent; pointer-events: none; }'
@@ -174,7 +181,7 @@ def top_nav_simple(active_key: str) -> str:
     _render(
         "<style>"
         f'.st-key-topbar_row {{ border-bottom:1px solid {b["primary_light"]}; '
-        "padding-bottom:2px; margin-bottom:10px; }"
+        "padding-bottom:2px; margin-bottom:6px; }"
         '.st-key-topbar_row div[data-testid="stHorizontalBlock"] { align-items:center; }'
         '.st-key-topbar_row button[kind="primary"], .st-key-topbar_row button[kind="secondary"] {'
         "background:transparent !important; border:none !important; box-shadow:none !important; "
@@ -296,6 +303,34 @@ def notice_detail_card(program, detail):
     _render(html)
 
 
+def clickable_bar_list(title: str, counts: dict, state_key: str):
+    """예전의 장식용 막대그래프(bar_list)를 대체 — 막대처럼 보이면서 실제로 눌러서 선택할 수 있다.
+    이름/막대/숫자 아무 곳이나 누르면 그 항목이 선택되고(다시 누르면 선택 해제),
+    선택된 값은 st.session_state[state_key]에 저장한다 (호출부에서 읽어서 목록을 보여줄 것)."""
+    b = config.BRAND
+    st.markdown(f"**{title}**")
+    if not counts:
+        st.caption("데이터가 없어요.")
+        return
+    max_v = max(counts.values())
+    for name, v in sorted(counts.items()):
+        pct = max(10, int(v / max_v * 100)) if max_v else 10
+        safe_key = re.sub(r"[^0-9a-zA-Z가-힣]", "_", f"{state_key}_{name}")
+        active = st.session_state.get(state_key) == name
+        with st.container(key=f"cbl_{safe_key}"):
+            if st.button(f"{name}   {v}명", key=f"cbl_btn_{safe_key}", use_container_width=True,
+                         type=("primary" if active else "secondary")):
+                st.session_state[state_key] = None if active else name
+                st.rerun()
+        _render(
+            "<style>"
+            f'.st-key-cbl_{safe_key} button {{ text-align:left !important; '
+            f'background:linear-gradient(to right, {b["primary_light"]} {pct}%, #fff {pct}%) !important; '
+            "border:1px solid #eee !important; }"
+            "</style>"
+        )
+
+
 def bar_list(title: str, counts: dict):
     """교수님별 지원자 수 같은 걸 가로 막대그래프로 보여준다. counts: {라벨: 숫자}"""
     b = config.BRAND
@@ -413,6 +448,8 @@ def footer():
 
 def labs_grid(labs_dict):
     b = config.BRAND
+    st.header("분야별 연구실 홈페이지")
+    st.caption("지원 전에 관심 있는 연구실 홈페이지를 미리 둘러보실 수 있어요. 카드를 클릭하면 새 탭에서 열립니다.")
     sections = []
     for field in sorted(labs_dict.keys()):
         labs = labs_dict[field]
@@ -432,12 +469,7 @@ def labs_grid(labs_dict):
             + cards +
             '</div></div>'
         )
-    html = (
-        f'<h2 style="font-size:18px;font-weight:700;margin:0 0 6px;color:{b["primary_dark"]};">분야별 연구실 홈페이지</h2>'
-        '<p style="font-size:13px;color:#888;margin:0 0 20px;">지원 전에 관심 있는 연구실 홈페이지를 미리 둘러보실 수 있어요. 카드를 클릭하면 새 탭에서 열립니다.</p>'
-        + "".join(sections)
-    )
-    _render(html)
+    _render("".join(sections))
 
 
 def faq_accordion(faq_items):
