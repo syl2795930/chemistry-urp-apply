@@ -115,7 +115,8 @@ def generate_application_pdf(data: dict, photo_bytes: bytes = None, show_receipt
         ("FONTNAME", (0, 0), (-1, -1), FONT),
         ("FONTSIZE", (0, 0), (-1, -1), 9),
         ("BACKGROUND", (0, 0), (0, -1), colors.whitesmoke),
-        ("BACKGROUND", (2, 0), (2, -1), colors.whitesmoke),
+        ("BACKGROUND", (2, 0), (2, 0), colors.whitesmoke),
+        ("BACKGROUND", (2, 2), (2, 2), colors.whitesmoke),
     ]))
     story.append(t2)
     story.append(Spacer(1, 10))

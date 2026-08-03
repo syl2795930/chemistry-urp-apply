@@ -158,12 +158,13 @@ def page_apply():
     theme.program_badge(config.PROGRAM["round_key"])
 
     if st.session_state.get("submitted_ok"):
-        st.success("지원이 정상적으로 완료되었습니다.")
-        st.info(f"문의사항은 {CONTACT_INFO} 로 연락 부탁드립니다.")
-        pdf_bytes = st.session_state.get("submitted_pdf")
-        if pdf_bytes:
-            _pdf_view_button(base64.b64encode(pdf_bytes).decode())
-            st.caption("성적증명서·재학증명서 등 첨부서류는 포함되어 있지 않아요.")
+        with st.container(key="apply_box"):
+            theme.submission_success_card(CONTACT_INFO)
+            pdf_bytes = st.session_state.get("submitted_pdf")
+            if pdf_bytes:
+                st.write("")
+                _pdf_view_button(base64.b64encode(pdf_bytes).decode())
+                st.caption("성적증명서·재학증명서 등 첨부서류는 포함되어 있지 않아요.")
         return
 
     with st.container(key="apply_box"):
@@ -314,7 +315,7 @@ def page_apply():
 
         # 지원자 폴더명: "이름_1.교수님_2.교수님" + 동명이인 방지용 짧은 시각 태그
         folder_key = (f"{name_kr}_1.{_short_prof(prof1)}_2.{_short_prof(prof2)}"
-                      f"_{datetime.datetime.now().strftime('%H%M%S')}")
+                      f"_{gsheets.now_kst().strftime('%H%M%S')}")
 
         group, score43, grade = scoring.compute_score(school, scale, gpa)
         doc_pass = "합격" if scoring.is_document_pass(grade) else "미달"
@@ -323,7 +324,7 @@ def page_apply():
         if t_school.strip():
             t_group, t_score43, t_grade = scoring.compute_score(t_school, t_scale, t_gpa)
 
-        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now = gsheets.now_kst().strftime("%Y-%m-%d %H:%M:%S")
         row = {
             "접수번호": "", "제출일시": now, "프로그램구분": config.PROGRAM["round_key"],
             "성명_한글": name_kr, "성명_영문": name_en, "생년월일": birth, "성별": gender,

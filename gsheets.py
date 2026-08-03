@@ -28,6 +28,8 @@ drive_folder_id = "구글드라이브_루트폴더_ID"
 admin_password = "관리자비밀번호"
 """
 import io
+import datetime
+from zoneinfo import ZoneInfo
 import pandas as pd
 import streamlit as st
 import gspread
@@ -35,6 +37,14 @@ from google.oauth2.service_account import Credentials
 from google.oauth2.credentials import Credentials as UserCredentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
+
+KST = ZoneInfo("Asia/Seoul")
+
+
+def now_kst() -> datetime.datetime:
+    """서버(Streamlit Cloud 등)는 보통 UTC로 돌아서 datetime.now()를 그냥 쓰면 시간이
+    9시간 어긋난다. 제출시각·문의등록시각 등 사람이 보는 시간은 항상 이 함수로 구한다."""
+    return datetime.datetime.now(KST)
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -136,7 +146,7 @@ def append_applicant(row: dict) -> str:
     """
     import re
     ws = _get_worksheet()
-    year = str(row.get("제출일시", ""))[:4] or __import__("datetime").datetime.now().strftime("%Y")
+    year = str(row.get("제출일시", ""))[:4] or now_kst().strftime("%Y")
     values = [str(row.get(h, "")) for h in HEADERS]
     resp = ws.append_row(values, value_input_option="USER_ENTERED")
 
@@ -312,10 +322,9 @@ def read_all_questions() -> pd.DataFrame:
 
 def append_question(name: str, pw: str, text: str) -> str:
     """질문 등록. 고유 id(문자열, 타임스탬프 기반)를 반환."""
-    import datetime
     ws = _get_qna_worksheet()
-    qid = datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
-    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    qid = now_kst().strftime("%Y%m%d%H%M%S%f")
+    now = now_kst().strftime("%Y-%m-%d %H:%M")
     ws.append_row([qid, now, name or "익명", pw, text, "", "N"], value_input_option="USER_ENTERED")
     return qid
 

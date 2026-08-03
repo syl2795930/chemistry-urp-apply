@@ -44,6 +44,22 @@ def inject_css(css: str):
     _render(f"<style>{css}</style>")
 
 
+def submission_success_card(contact_email: str):
+    """제출 완료 화면. 기본 st.success(초록)+st.info(파랑) 조합 대신, 사이트 브랜드 컬러에
+    맞춘 카드 하나로 통일해서 화면이 여러 색이 뒤섞여 조잡해 보이지 않게 한다."""
+    b = config.BRAND
+    _render(
+        '<div style="text-align:center;padding:10px 0 6px;">'
+        '<div style="font-size:34px;line-height:1;">✅</div>'
+        f'<div style="font-size:19px;font-weight:700;color:{b["primary_dark"]};margin:10px 0 6px;">'
+        '지원이 정상적으로 완료되었습니다</div>'
+        f'<div style="font-size:13px;color:#888;">문의사항은 '
+        f'<a href="mailto:{contact_email}" style="color:{b["primary"]};font-weight:600;text-decoration:none;">'
+        f'{contact_email}</a> 로 연락 부탁드립니다.</div>'
+        '</div>'
+    )
+
+
 def program_badge(round_key: str):
     """지원서 작성 화면 맨 위, 큰 입력칸 대신 작은 배지로 지금 몇 회차 접수 중인지 보여준다.
     (필수 입력칸처럼 보여서 첫 질문과 헷갈리지 않게, 그러면서도 눈에 잘 띄게 진한 글씨로)"""
