@@ -74,7 +74,7 @@ def program_badge(round_key: str):
     b = config.BRAND
     _render(
         f'<div style="display:inline-block;background:{b["page_bg"]};border:1px solid {b["primary_light"]};'
-        f'border-radius:999px;padding:5px 14px;margin-bottom:10px;font-size:12px;font-weight:700;'
+        f'border-radius:999px;padding:5px 14px;margin-bottom:14px;font-size:12px;font-weight:700;'
         f'color:{b["primary_dark"]};">지원 프로그램 · {round_key}</div>'
     )
 
@@ -89,17 +89,17 @@ def inject():
     css = (
         "<style>"
         f".stApp {{ background-color: {b['page_bg']}; }}"
-        ".block-container { max-width: 1150px; margin: 0 auto; padding-top: 0.2rem; }"
-        'div[data-testid="stVerticalBlock"] { gap: 0.5rem; }'
+        ".block-container { max-width: 1150px; margin: 0 auto; padding-top: 0.6rem; }"
+        'div[data-testid="stVerticalBlock"] { gap: 0.7rem; }'
         f'.st-key-apply_box {{ border:1px solid {b["primary_light"]}; border-radius:10px; '
-        "padding:20px 24px 4px 24px; background:#fff; margin-bottom:16px; }"
-        'header[data-testid="stHeader"] { background-color: transparent; pointer-events: none; }'
-        'div[data-testid="stToolbar"] { pointer-events: none; }'
-        'header[data-testid="stHeader"] button, header[data-testid="stHeader"] a { pointer-events: auto; }'
+        "padding:20px 24px 4px 24px; background:#fff; margin-bottom:16px; margin-top:6px; }"
+        # 투명 처리만 해뒀던 기본 헤더 바가 여전히 자리를 차지해서 위쪽 공백의 주범이었음 -> 아예 숨김.
+        # (이 안에 우리가 직접 넣은 버튼/링크가 없으므로 완전히 숨겨도 클릭 관련 문제는 생기지 않는다)
+        'header[data-testid="stHeader"] { display:none !important; }'
         "h1, h2, h3 { color: " + b['primary_dark'] + " !important; }"
-        "h1 { font-size: 1.7rem !important; margin-bottom:0.3rem !important; }"
-        "h2 { font-size: 1.3rem !important; margin-bottom:0.3rem !important; }"
-        "h3 { font-size: 1.05rem !important; margin-bottom:0.2rem !important; }"
+        "h1 { font-size: 1.8rem !important; margin-bottom:0.3rem !important; }"
+        "h2 { font-size: 1.55rem !important; margin-bottom:0.3rem !important; }"
+        "h3 { font-size: 1.1rem !important; margin-bottom:0.2rem !important; }"
         '.stButton>button[kind="primary"], .stFormSubmitButton>button[kind="primary"], button[kind="primary"] {'
         f"background-color:{b['primary']};border-color:{b['primary']};border-radius:8px;font-weight:600; }}"
         '.stButton>button[kind="primary"]:hover, .stFormSubmitButton>button[kind="primary"]:hover, button[kind="primary"]:hover {'
@@ -310,15 +310,25 @@ def notice_detail_card(program, detail):
 
 def clickable_bar_chart(title: str, counts: dict, state_key: str):
     """진짜 막대그래프(plotly)로 그리고, 막대를 클릭하면 그 항목이 선택되게 한다.
-    선택된 값은 st.session_state[state_key]에 저장한다 (호출부에서 읽어서 목록을 보여줄 것)."""
+    선택된 값은 st.session_state[state_key]에 저장한다 (호출부에서 읽어서 목록을 보여줄 것).
+    교수님 수가 많아지면(예: 20명 이상) 막대가 빽빽해지므로, 이름으로 좁혀보는 검색창을 같이 두고
+    항목이 많을수록 막대 하나의 높이를 줄여서 전체 그래프가 과도하게 길어지지 않게 한다."""
     b = config.BRAND
     st.markdown(f"**{title}**")
     if not counts:
         st.caption("데이터가 없어요.")
         return
-    items = sorted(counts.items(), key=lambda kv: kv[1])  # 값이 큰 게 위로 오도록 오름차순으로 넣는다
+    q = st.text_input("이름으로 좁혀보기", key=f"filter_{state_key}", placeholder="예: 권도훈")
+    items = sorted(
+        ((k, v) for k, v in counts.items() if not q or q.strip() in k),
+        key=lambda kv: kv[1],
+    )
+    if not items:
+        st.caption("일치하는 교수님이 없어요.")
+        return
     names = [k for k, _ in items]
     values = [v for _, v in items]
+    row_h = 42 if len(items) <= 12 else max(22, int(42 * 12 / len(items)))
     fig = go.Figure(go.Bar(
         x=values, y=names, orientation="h",
         marker_color=b["primary"],
@@ -326,12 +336,12 @@ def clickable_bar_chart(title: str, counts: dict, state_key: str):
         hovertemplate="%{y} — %{x}명<extra></extra>",
     ))
     fig.update_layout(
-        height=max(160, 42 * len(items) + 40),
+        height=max(160, row_h * len(items) + 40),
         margin=dict(l=10, r=30, t=10, b=30),
         xaxis=dict(showgrid=True, gridcolor="#eee", zeroline=False, dtick=1),
         yaxis=dict(showgrid=False),
         plot_bgcolor="white", paper_bgcolor="white",
-        font=dict(size=13),
+        font=dict(size=13 if row_h >= 30 else 11),
     )
     event = st.plotly_chart(fig, use_container_width=True, on_select="rerun", key=f"chart_{state_key}")
     points = (event or {}).get("selection", {}).get("points", [])

@@ -144,10 +144,16 @@ def append_applicant(row: dict) -> str:
     같은 접수번호가 배정될 수 있는 문제가 있었다. 이 함수는 구글시트 append가 끝난 '이후',
     실제로 배정된 행 번호를 기준으로 접수번호를 매기기 때문에 동시 제출에도 안전하다.
     (구글시트 API의 append는 동시 요청이 와도 서로 다른 행을 순서대로 배정하도록 보장한다.)
+
+    접수번호 형식: "27W-001" (연도 뒤 2자리 + 회차 짧은이름 첫 글자 + 그 회차 안에서의 순번).
+    '프로그램구분'(예: "2027-WURF")을 기준으로 순번을 매기므로, 접수 시작 연도가 프로그램
+    연도와 달라도(예: 2026년 10월에 2027 WURF 접수) 항상 정확한 회차 기준으로 번호가 매겨진다.
     """
     import re
     ws = _get_worksheet()
-    year = str(row.get("제출일시", ""))[:4] or now_kst().strftime("%Y")
+    round_key = str(row.get("프로그램구분", "")) or now_kst().strftime("%Y") + "-X"
+    yr_part, _, short_part = round_key.partition("-")
+    prefix = f"{yr_part[-2:]}{(short_part[:1] or 'X').upper()}"
     values = [str(row.get(h, "")) for h in HEADERS]
     resp = ws.append_row(values, value_input_option="USER_ENTERED")
 
@@ -156,12 +162,12 @@ def append_applicant(row: dict) -> str:
     m = re.search(r"![A-Z]+(\d+)", updated_range)
     if m:
         row_idx = int(m.group(1))
-        date_col = HEADERS.index("제출일시") + 1
-        # 헤더(1행) 다음부터, 방금 저장된 이 행까지의 제출일시 값을 읽는다.
-        # append가 끝난 시점에는 이 행의 제출일시도 이미 저장돼 있으므로 동시 제출이어도 안전하게 카운트된다.
-        dates_so_far = ws.col_values(date_col)[1:row_idx]
-        seq = sum(1 for d in dates_so_far if str(d).startswith(year)) or 1
-        receipt_no = f"{year}-{seq:04d}"
+        round_col = HEADERS.index("프로그램구분") + 1
+        # 헤더(1행) 다음부터, 방금 저장된 이 행까지의 '프로그램구분' 값을 읽어 같은 회차만 센다.
+        # append가 끝난 시점에는 이 행 값도 이미 저장돼 있으므로 동시 제출이어도 안전하게 카운트된다.
+        rounds_so_far = ws.col_values(round_col)[1:row_idx]
+        seq = sum(1 for r in rounds_so_far if str(r) == round_key) or 1
+        receipt_no = f"{prefix}-{seq:03d}"
         ws.update_cell(row_idx, HEADERS.index("접수번호") + 1, receipt_no)
     return receipt_no
 
@@ -272,14 +278,14 @@ def delete_applicant_row(receipt_no: str):
         ws.delete_rows(cell.row)
 
 
-def archive_and_delete_year(df: "pd.DataFrame", year: str, progress_cb=None):
+def archive_and_delete_round(df: "pd.DataFrame", round_key: str, progress_cb=None):
     """
-    지정한 연도(접수번호 접두어 기준)의 지원자 전체를
+    지정한 회차('프로그램구분' 값, 예: "2027-WURF")의 지원자 전체를
     - 구글드라이브 폴더는 휴지통으로 이동
     - 구글시트 행은 삭제
     (호출 전에 반드시 UI에서 백업 ZIP을 먼저 다운로드하도록 안내할 것)
     """
-    targets = df[df["접수번호"].astype(str).str.startswith(f"{year}-")]
+    targets = df[df["프로그램구분"].astype(str) == round_key]
     # 시트 행 인덱스가 삭제할수록 밀리므로, 접수번호가 큰 것부터(뒤에서부터) 처리
     targets = targets.sort_values("접수번호", ascending=False)
     total = len(targets)
