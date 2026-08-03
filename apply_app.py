@@ -46,21 +46,17 @@ def _is_valid_email(v: str) -> bool:
     return bool(re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", str(v).strip()))
 
 
-@st.dialog("제출하신 내용 확인", width="large")
-def _submitted_pdf_dialog(pdf_bytes: bytes):
-    b64 = base64.b64encode(pdf_bytes).decode()
-    _render_pdf_viewer(b64, height=680)
-    st.caption("성적증명서·재학증명서 등 첨부서류는 포함되어 있지 않아요.")
-
-
-def _render_pdf_viewer(pdf_b64: str, height: int = 760):
-    """다운로드 버튼 대신, 화면 안에서 바로 PDF를 볼 수 있게 띄운다.
-    data: URI를 iframe에 바로 넣는 방식은 브라우저/보안정책(CSP)에 막혀서 빈 문서 아이콘만
-    뜨는 경우가 있어서, base64를 blob으로 변환해 embed 태그에 넣는 방식으로 우회한다."""
+def _pdf_view_button(pdf_b64: str, label: str = "제출하신 내용 확인하기 (새 탭에서 열기)"):
+    """화면 안(iframe)에 PDF를 끼워넣는 방식은 Streamlit 컴포넌트가 샌드박스 안에 있어서
+    브라우저/환경에 따라 빈 화면만 뜨는 문제가 있었다. 그래서 버튼을 누르면 브라우저의 새 탭
+    (최상위 창)에서 PDF를 여는 방식으로 바꿨다 — 다운로드가 아니라 브라우저 내장 뷰어로 바로 보임."""
+    b = config.BRAND
     components.html(
-        "<embed id='pdf_embed' type='application/pdf' width='100%' height='" + str(height) + "' "
-        "style='border:1px solid #E7D6E2;border-radius:8px;'>"
+        "<button id='pdf_view_btn' style='width:100%;padding:11px 16px;border-radius:8px;"
+        f"border:1px solid {b['primary']};background:{b['primary']};color:#fff;"
+        "font-weight:600;font-size:15px;cursor:pointer;'>" + label + "</button>"
         "<script>"
+        "document.getElementById('pdf_view_btn').onclick = function() {"
         f"const b64 = '{pdf_b64}';"
         "const byteChars = atob(b64);"
         "const byteNumbers = new Array(byteChars.length);"
@@ -68,9 +64,10 @@ def _render_pdf_viewer(pdf_b64: str, height: int = 760):
         "const byteArray = new Uint8Array(byteNumbers);"
         "const blob = new Blob([byteArray], {type: 'application/pdf'});"
         "const url = URL.createObjectURL(blob);"
-        "document.getElementById('pdf_embed').src = url;"
+        "window.open(url, '_blank');"
+        "};"
         "</script>",
-        height=height + 10,
+        height=54,
     )
 
 
@@ -165,8 +162,8 @@ def page_apply():
         st.info(f"문의사항은 {CONTACT_INFO} 로 연락 부탁드립니다.")
         pdf_bytes = st.session_state.get("submitted_pdf")
         if pdf_bytes:
-            if st.button("제출하신 내용 확인하기", use_container_width=True):
-                _submitted_pdf_dialog(pdf_bytes)
+            _pdf_view_button(base64.b64encode(pdf_bytes).decode())
+            st.caption("성적증명서·재학증명서 등 첨부서류는 포함되어 있지 않아요.")
         return
 
     with st.container(key="apply_box"):
