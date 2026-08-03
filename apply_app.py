@@ -146,7 +146,6 @@ def page_faq():
 # ══════════════════════════ 지원하기 ══════════════════════════
 def page_apply():
     st.header("지원서 작성")
-    st.caption(f"{config.PROGRAM['name']} ({config.PROGRAM['short_name']})")
 
     if st.session_state.get("submitted_ok"):
         st.success("지원이 정상적으로 완료되었습니다.")
@@ -158,9 +157,15 @@ def page_apply():
         return
 
     with st.container(key="apply_box"):
-        st.text_input("지원 프로그램", value=f"{config.PROGRAM['year']}-{config.PROGRAM['short_name']}",
-                       disabled=True, key="program_round_display",
-                       help="이번에 접수받는 회차예요. 관리자만 config.py에서 바꿀 수 있어요.")
+        with st.container(key="program_round_box"):
+            st.text_input("지원 프로그램", value=f"{config.PROGRAM['year']}-{config.PROGRAM['short_name']}",
+                           disabled=True, key="program_round_display",
+                           help="이번에 접수받는 회차예요. 관리자만 config.py에서 바꿀 수 있어요.")
+        theme.inject_css(
+            '.st-key-program_round_box input:disabled{'
+            f'-webkit-text-fill-color:{config.BRAND["primary_dark"]} !important;'
+            f'color:{config.BRAND["primary_dark"]} !important;font-weight:700 !important;}}'
+        )
         st.subheader("1. 기본 정보")
         c1, c2 = st.columns(2)
         with c1:

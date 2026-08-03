@@ -39,6 +39,11 @@ def _render(html: str):
     st.markdown(html, unsafe_allow_html=True)
 
 
+def inject_css(css: str):
+    """apply_app.py/admin_app.py에서 특정 위젯 하나에만 CSS를 살짝 덧입히고 싶을 때 쓰는 공개 헬퍼."""
+    _render(f"<style>{css}</style>")
+
+
 def inline_error(text: str):
     """st.error()는 글자가 커서, 입력폼 실시간 검증용으로 작은 빨간 글씨 경고를 대신 쓴다."""
     _render(f'<div style="color:#D33;font-size:12px;margin:-8px 0 8px 2px;">⚠ {text}</div>')

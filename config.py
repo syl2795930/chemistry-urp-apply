@@ -28,7 +28,7 @@ PROGRAM = {
     "announce": "미정",
     "announce_note": "추후 확정 예정",
 }
-PROGRAM["round_key"] = f"{PROGRAM['year']}_{PROGRAM['short_name']}"  # 예: "2027_WURF"
+PROGRAM["round_key"] = f"{PROGRAM['year']}-{PROGRAM['short_name']}"  # 예: "2027-WURF" (다음엔 "2027-SURF" 식으로)
 
 # 홈 화면 하단 공지사항 게시판. 지금 모집 중인 이번 회차({PROGRAM['name']})는 히어로/모집공고
 # 상세에서 이미 충분히 안내되므로, 여기에는 '다른' 회차 소식만 넣어서 중복을 피한다.
