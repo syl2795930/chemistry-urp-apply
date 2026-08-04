@@ -357,7 +357,7 @@ def prof_summary_table(counts1: dict, counts2: dict, state_key: str):
             n1, n2 = int(counts1.get(p, 0)), int(counts2.get(p, 0))
             active = st.session_state.get(state_key) == p
             safe = re.sub(r"[^0-9a-zA-Z가-힣]", "_", p)
-            if st.button(f"{p}   ·   1지망 {n1}명   ·   2지망 {n2}명",
+            if st.button(f"{p}\n\n1지망 {n1}명 　·　 2지망 {n2}명",
                          key=f"pst_btn_{state_key}_{safe}", use_container_width=True,
                          type=("primary" if active else "secondary")):
                 st.session_state[state_key] = None if active else p
@@ -366,11 +366,21 @@ def prof_summary_table(counts1: dict, counts2: dict, state_key: str):
         "<style>"
         f'.st-key-{box_key} {{ background:#fff;border:1px solid {b["primary_light"]};'
         f'border-left:4px solid {b["primary"]};border-radius:10px;padding:14px 16px; }}'
-        f'.st-key-{box_key} div[data-testid="stButton"] {{ margin-bottom:5px; }}'
+        f'.st-key-{box_key} div[data-testid="stButton"] {{ margin-bottom:6px; }}'
         f'.st-key-{box_key} button {{ text-align:left !important; border-radius:6px !important; '
-        f'border:none !important; background:{b["page_bg"]} !important; font-weight:500 !important; }}'
-        f'.st-key-{box_key} button[kind="primary"] {{ background:{b["primary"]} !important; '
-        "color:#fff !important; font-weight:700 !important; }"
+        f'border:none !important; background:{b["page_bg"]} !important; height:auto !important; '
+        "padding:8px 14px !important; }"
+        f'.st-key-{box_key} button[kind="primary"] {{ background:{b["primary"]} !important; }}'
+        # 이름 줄
+        f'.st-key-{box_key} button div[data-testid="stMarkdownContainer"] > p:nth-of-type(1) {{'
+        f'font-size:14px;font-weight:600;margin:0;color:{b["primary_dark"]}; }}'
+        f'.st-key-{box_key} button[kind="primary"] div[data-testid="stMarkdownContainer"] > p:nth-of-type(1) {{'
+        "color:#fff !important; }"
+        # 인원 숫자 줄 — 이게 잘 안 보인다는 피드백을 받아서 크고 굵게 키움
+        f'.st-key-{box_key} button div[data-testid="stMarkdownContainer"] > p:nth-of-type(2) {{'
+        f'font-size:16px;font-weight:800;margin:3px 0 0;color:{b["primary"]}; }}'
+        f'.st-key-{box_key} button[kind="primary"] div[data-testid="stMarkdownContainer"] > p:nth-of-type(2) {{'
+        "color:#fff !important; }"
         "</style>"
     )
 
