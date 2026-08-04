@@ -415,9 +415,10 @@ def quick_filter_card(label: str, value: str, note: str, key: str, active: bool)
     st.button의 라벨에 '\\n\\n'을 넣으면 문단이 두 개(<p> 두 개)로 나뉘어 렌더링되는 점을
     이용해서, 첫 <p>는 큰 숫자로 / 나머지는 작은 라벨로 CSS를 나눠 입힌다."""
     b = config.BRAND
+    label_text = f"{value}\n\n{label}" + (f"\n\n{note}" if note else "")
     with st.container(key=f"qfc_{key}"):
         clicked = st.button(
-            f"{value}\n\n{label}\n\n{note}",
+            label_text,
             key=f"qfc_btn_{key}", use_container_width=True,
             type=("primary" if active else "secondary"),
         )
