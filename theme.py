@@ -10,8 +10,8 @@ apply_app.py, admin_app.py 양쪽에서 똑같이 불러다 씁니다.
 import base64
 import io
 import re
+import pandas as pd
 import streamlit as st
-import plotly.graph_objects as go
 import streamlit.components.v1 as components
 import config
 
@@ -84,12 +84,13 @@ def inline_error(text: str):
     _render(f'<div style="color:#D33;font-size:12px;margin:-8px 0 8px 2px;">⚠ {text}</div>')
 
 
-def inject():
+def inject(wide: bool = False):
     b = config.BRAND
+    max_w = "1500px" if wide else "1150px"
     css = (
         "<style>"
         f".stApp {{ background-color: {b['page_bg']}; }}"
-        ".block-container { max-width: 1150px; margin: 0 auto; padding-top: 0.6rem; }"
+        f".block-container {{ max-width: {max_w}; margin: 0 auto; padding-top: 0.6rem; }}"
         'div[data-testid="stVerticalBlock"] { gap: 0.7rem; }'
         f'.st-key-apply_box {{ border:1px solid {b["primary_light"]}; border-radius:10px; '
         "padding:20px 24px 4px 24px; background:#fff; margin-bottom:16px; margin-top:6px; }"
@@ -309,48 +310,24 @@ def notice_detail_card(program, detail):
 
 
 def clickable_bar_chart(title: str, counts: dict, state_key: str):
-    """진짜 막대그래프(plotly)로 그리고, 막대를 클릭하면 그 항목이 선택되게 한다.
-    선택된 값은 st.session_state[state_key]에 저장한다 (호출부에서 읽어서 목록을 보여줄 것).
-    교수님 수가 많아지면(예: 20명 이상) 막대가 빽빽해지므로, 이름으로 좁혀보는 검색창을 같이 두고
-    항목이 많을수록 막대 하나의 높이를 줄여서 전체 그래프가 과도하게 길어지지 않게 한다."""
-    b = config.BRAND
+    """교수님별 인원수를 컴팩트한 표로 보여주고, 행을 누르면 그 교수님이 선택되게 한다.
+    '인원' 칸은 진행바(ProgressColumn)로 표시해서 막대그래프 같은 느낌을 유지하면서도,
+    plotly 차트보다 훨씬 공간을 적게 쓰고 표시 오류도 없다.
+    선택된 값은 st.session_state[state_key]에 저장한다 (호출부에서 읽어서 목록을 보여줄 것)."""
     st.markdown(f"**{title}**")
     if not counts:
         st.caption("데이터가 없어요.")
         return
-    q = st.text_input("이름으로 좁혀보기", key=f"filter_{state_key}", placeholder="예: 권도훈")
-    items = sorted(
-        ((k, v) for k, v in counts.items() if not q or q.strip() in k),
-        key=lambda kv: kv[1],
+    items = sorted(counts.items(), key=lambda kv: -kv[1])
+    cdf = pd.DataFrame({"교수님": [k for k, _ in items], "인원": [v for _, v in items]})
+    max_v = int(cdf["인원"].max())
+    event = st.dataframe(
+        cdf, use_container_width=True, hide_index=True,
+        on_select="rerun", selection_mode="single-row", key=f"prof_df_{state_key}",
+        column_config={"인원": st.column_config.ProgressColumn("인원", min_value=0, max_value=max_v, format="%d명")},
     )
-    if not items:
-        st.caption("일치하는 교수님이 없어요.")
-        return
-    names = [k for k, _ in items]
-    values = [v for _, v in items]
-    row_h = 42 if len(items) <= 12 else max(22, int(42 * 12 / len(items)))
-    fig = go.Figure(go.Bar(
-        x=values, y=names, orientation="h",
-        marker_color=b["primary"],
-        text=values, textposition="outside",
-        hovertemplate="%{y} — %{x}명<extra></extra>",
-    ))
-    fig.update_layout(
-        height=max(160, row_h * len(items) + 40),
-        margin=dict(l=10, r=30, t=10, b=30),
-        xaxis=dict(showgrid=True, gridcolor="#eee", zeroline=False, dtick=1),
-        yaxis=dict(showgrid=False),
-        plot_bgcolor="white", paper_bgcolor="white",
-        font=dict(size=13 if row_h >= 30 else 11),
-    )
-    event = st.plotly_chart(fig, use_container_width=True, on_select="rerun", key=f"chart_{state_key}")
-    points = (event or {}).get("selection", {}).get("points", [])
-    if points:
-        st.session_state[state_key] = points[0]["y"]
-    if st.session_state.get(state_key):
-        if st.button(f"✕ {st.session_state[state_key]} 목록 닫기", key=f"close_{state_key}"):
-            st.session_state[state_key] = None
-            st.rerun()
+    rows = (event or {}).get("selection", {}).get("rows", [])
+    st.session_state[state_key] = cdf.iloc[rows[0]]["교수님"] if rows else None
 
 
 def bar_list(title: str, counts: dict):

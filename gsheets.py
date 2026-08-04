@@ -145,15 +145,16 @@ def append_applicant(row: dict) -> str:
     실제로 배정된 행 번호를 기준으로 접수번호를 매기기 때문에 동시 제출에도 안전하다.
     (구글시트 API의 append는 동시 요청이 와도 서로 다른 행을 순서대로 배정하도록 보장한다.)
 
-    접수번호 형식: "27W-001" (연도 뒤 2자리 + 회차 짧은이름 첫 글자 + 그 회차 안에서의 순번).
+    접수번호 형식: "26-008" (연도 뒤 2자리 + 그 회차 안에서의 순번, 3자리).
     '프로그램구분'(예: "2027-WURF")을 기준으로 순번을 매기므로, 접수 시작 연도가 프로그램
     연도와 달라도(예: 2026년 10월에 2027 WURF 접수) 항상 정확한 회차 기준으로 번호가 매겨진다.
+    (회차가 순차적으로 진행되는 한, 같은 해에 두 회차가 동시에 겹쳐 접수번호가 헷갈릴 일은 없다.)
     """
     import re
     ws = _get_worksheet()
     round_key = str(row.get("프로그램구분", "")) or now_kst().strftime("%Y") + "-X"
-    yr_part, _, short_part = round_key.partition("-")
-    prefix = f"{yr_part[-2:]}{(short_part[:1] or 'X').upper()}"
+    yr_part, _, _short_part = round_key.partition("-")
+    prefix = yr_part[-2:] or now_kst().strftime("%y")
     values = [str(row.get(h, "")) for h in HEADERS]
     resp = ws.append_row(values, value_input_option="USER_ENTERED")
 
