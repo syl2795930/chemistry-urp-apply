@@ -339,10 +339,10 @@ def clickable_bar_chart(title: str, counts: dict, state_key: str):
 
 
 def prof_summary_table(counts1: dict, counts2: dict, state_key: str):
-    """표(st.dataframe) + 진행바(ProgressColumn) 조합. 막대 길이로 한눈에 비교가 되면서도
-    표라서 한 줄이 짧아(≈35px) 교수님이 많아져도 세로로 크게 늘어나지 않는다.
-    체크박스는 표의 행 선택 기능에 기본으로 붙는 것이라 뺄 수 없지만, 그 대신 '한눈에 비교'와
-    '공간 절약'을 둘 다 챙기는 절충안. 행을 누르면 그 교수님을 선택 상태로 저장한다."""
+    """표(st.dataframe)에 교수님별 1지망/2지망 인원을 숫자로만 보여준다 (진행바까지는
+    과했다는 판단으로 뺐다). 체크박스는 표의 행 선택 기능에 기본으로 붙는 것이라 이 컴포넌트를
+    쓰는 한 뺄 수 없다 — 완전히 없애려면 커스텀 버튼으로 가야 하는데, 그건 공간을 더 쓴다는
+    트레이드오프가 있어 이번엔 표 쪽으로 정리했다. 행을 누르면 그 교수님을 선택 상태로 저장한다."""
     b = config.BRAND
     all_profs = sorted(set(counts1) | set(counts2),
                         key=lambda p: -(counts1.get(p, 0) + counts2.get(p, 0)))
@@ -356,15 +356,9 @@ def prof_summary_table(counts1: dict, counts2: dict, state_key: str):
             "1지망": [int(counts1.get(p, 0)) for p in all_profs],
             "2지망": [int(counts2.get(p, 0)) for p in all_profs],
         })
-        max1 = max(1, int(tdf["1지망"].max()))
-        max2 = max(1, int(tdf["2지망"].max()))
         event = st.dataframe(
             tdf, use_container_width=True, hide_index=True,
             on_select="rerun", selection_mode="single-row", key=f"prof_summary_{state_key}",
-            column_config={
-                "1지망": st.column_config.ProgressColumn("1지망", min_value=0, max_value=max1, format="%d명"),
-                "2지망": st.column_config.ProgressColumn("2지망", min_value=0, max_value=max2, format="%d명"),
-            },
         )
         rows = (event or {}).get("selection", {}).get("rows", [])
         st.session_state[state_key] = tdf.iloc[rows[0]]["교수님"] if rows else None
