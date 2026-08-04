@@ -338,13 +338,12 @@ def clickable_bar_chart(title: str, counts: dict, state_key: str):
     )
 
 
-def prof_summary_table(counts1: dict, counts2: dict, state_key: str):
-    """'교수님 | 1지망 | 2지망'을 한 줄짜리 버튼으로 보여준다. 표(st.dataframe)는 촘촘하지만
-    캔버스 위젯이라 체크박스가 자동으로 붙고 색을 깊게 못 입힌다. 두 줄짜리 버튼은 색은
-    자유로웠지만 표보다 훨씬 넓었다. 그래서 버튼을 다시 쓰되 '한 줄'로 압축하고 여백을
-    최소화해서(표 한 줄과 비슷한 높이), 체크박스 없이 완전한 자주색 스타일 + 촘촘함을
-    같이 노린다. 숫자는 굵게 강조해서 옅어 보이지 않게 한다.
-    행을 누르면 그 교수님을 선택 상태로 저장한다."""
+def prof_summary_table(counts1: dict, counts2: dict, state_key: str, cols: int = 4):
+    """세로로 한 줄씩 쌓는 목록은 교수님이 23명, 앞으로 더 늘어나면 세로로 계속 길어질 수밖에
+    없다. 그래서 목록이 아니라 '격자(그리드)'로 바꿔서 가로 공간도 같이 쓴다 — 23명이면
+    4칸씩 6줄 정도라, 세로 목록(23줄)보다 훨씬 짧아지고 인원이 늘어도 훨씬 덜 늘어난다.
+    칸 안에는 교수님 짧은 이름 + 1지망/2지망 숫자만 넣고, 연구실명 전체는 마우스를 올리면
+    보이는 도움말(help)로 뺐다. 칸을 누르면 그 교수님을 선택 상태로 저장한다."""
     b = config.BRAND
     all_profs = sorted(set(counts1) | set(counts2),
                         key=lambda p: -(counts1.get(p, 0) + counts2.get(p, 0)))
@@ -353,26 +352,37 @@ def prof_summary_table(counts1: dict, counts2: dict, state_key: str):
         return
     box_key = f"pst_box_{state_key}"
     with st.container(key=box_key):
-        for p in all_profs:
-            n1, n2 = int(counts1.get(p, 0)), int(counts2.get(p, 0))
-            active = st.session_state.get(state_key) == p
-            safe = re.sub(r"[^0-9a-zA-Z가-힣]", "_", p)
-            if st.button(f"{p}　　**1지망 {n1}명**　·　**2지망 {n2}명**",
-                         key=f"pst_btn_{state_key}_{safe}", use_container_width=True,
-                         type=("primary" if active else "secondary")):
-                st.session_state[state_key] = None if active else p
-                st.rerun()
+        for i in range(0, len(all_profs), cols):
+            row_profs = all_profs[i:i + cols]
+            row_cols = st.columns(cols)
+            for c, p in zip(row_cols, row_profs):
+                n1, n2 = int(counts1.get(p, 0)), int(counts2.get(p, 0))
+                active = st.session_state.get(state_key) == p
+                short = p.split(" 교수님")[0].strip() or p
+                safe = re.sub(r"[^0-9a-zA-Z가-힣]", "_", p)
+                with c:
+                    if st.button(f"{short}\n\n1지망 {n1} · 2지망 {n2}",
+                                 key=f"pst_btn_{state_key}_{safe}", use_container_width=True,
+                                 type=("primary" if active else "secondary"), help=p):
+                        st.session_state[state_key] = None if active else p
+                        st.rerun()
     _render(
         "<style>"
         f'.st-key-{box_key} {{ background:#fff;border:1px solid {b["primary_light"]};'
-        f'border-left:4px solid {b["primary"]};border-radius:10px;padding:10px 12px; }}'
-        f'.st-key-{box_key} div[data-testid="stButton"] {{ margin-bottom:3px; }}'
-        f'.st-key-{box_key} button {{ text-align:left !important; border-radius:5px !important; '
-        f'border:none !important; background:{b["page_bg"]} !important; min-height:auto !important; '
-        "padding:5px 12px !important; font-size:13px !important; }"
-        f'.st-key-{box_key} button p {{ color:{b["primary_dark"]} !important; margin:0 !important; }}'
+        f'border-left:4px solid {b["primary"]};border-radius:10px;padding:14px 12px 8px; }}'
+        f'.st-key-{box_key} div[data-testid="stButton"] {{ margin-bottom:8px; }}'
+        f'.st-key-{box_key} button {{ text-align:center !important; border-radius:8px !important; '
+        f'border:none !important; background:{b["page_bg"]} !important; height:auto !important; '
+        "padding:8px 6px !important; }"
+        f'.st-key-{box_key} button div[data-testid="stMarkdownContainer"] > p:nth-of-type(1) {{'
+        f'font-size:13px;font-weight:700;margin:0;color:{b["primary_dark"]}; }}'
+        f'.st-key-{box_key} button[kind="primary"] div[data-testid="stMarkdownContainer"] > p:nth-of-type(1) {{'
+        "color:#fff !important; }"
+        f'.st-key-{box_key} button div[data-testid="stMarkdownContainer"] > p:nth-of-type(2) {{'
+        f'font-size:12px;font-weight:600;margin:3px 0 0;color:{b["primary"]}; }}'
+        f'.st-key-{box_key} button[kind="primary"] div[data-testid="stMarkdownContainer"] > p:nth-of-type(2) {{'
+        "color:#fff !important; }"
         f'.st-key-{box_key} button[kind="primary"] {{ background:{b["primary"]} !important; }}'
-        f'.st-key-{box_key} button[kind="primary"] p {{ color:#fff !important; }}'
         "</style>"
     )
 
