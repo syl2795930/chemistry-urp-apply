@@ -309,25 +309,64 @@ def notice_detail_card(program, detail):
     _render(html)
 
 
+def clickable_bar_chart(title: str, counts: dict, state_key: str):
+    """교수님별 인원수를 표 + 진행바(ProgressColumn)로 보여주고, '인원' 숫자가 있는 행을 누르면
+    그 교수님이 선택되게 한다. 흰 카드 안에 넣어서 지원자 사이트(apply_box)와 톤을 맞춘다.
+    선택된 값은 st.session_state[state_key]에 저장한다 (호출부에서 읽어서 목록을 보여줄 것)."""
+    b = config.BRAND
+    box_key = f"cbc_box_{state_key}"
+    with st.container(key=box_key):
+        st.markdown(f"**{title}**")
+        if not counts:
+            st.caption("데이터가 없어요.")
+        else:
+            items = sorted(counts.items(), key=lambda kv: -kv[1])
+            cdf = pd.DataFrame({"교수님": [k for k, _ in items], "인원": [v for _, v in items]})
+            max_v = int(cdf["인원"].max())
+            event = st.dataframe(
+                cdf, use_container_width=True, hide_index=True,
+                on_select="rerun", selection_mode="single-row", key=f"prof_df_{state_key}",
+                column_config={"인원": st.column_config.ProgressColumn("인원", min_value=0, max_value=max_v, format="%d명")},
+            )
+            rows = (event or {}).get("selection", {}).get("rows", [])
+            st.session_state[state_key] = cdf.iloc[rows[0]]["교수님"] if rows else None
+    _render(
+        "<style>"
+        f'.st-key-{box_key} {{ background:#fff;border:1px solid {b["primary_light"]};'
+        "border-radius:10px;padding:16px 18px; }"
+        "</style>"
+    )
+
+
 def prof_summary_table(counts1: dict, counts2: dict, state_key: str):
-    """1지망/2지망 표를 따로 두지 않고 '교수님 | 1지망 인원 | 2지망 인원' 한 표로 합쳐서 보여준다.
-    행을 누르면 그 교수님이 선택되고, 선택된 교수님 이름을 st.session_state[state_key]에 저장한다
-    (호출부에서 읽어서 1지망·2지망 지원자를 함께 보여줄 것)."""
+    """'교수님 | 1지망 인원 | 2지망 인원' 한 표로 합쳐서 한눈에 보여준다 (공간 절약).
+    표 자체는 '행 선택'만 지원해서(칸 단위 클릭 감지는 아직 불안정한 최신 기능이라 피함),
+    행을 누르면 그 교수님을 선택 상태로 저장한다. 1지망/2지망 중 어느 목록을 볼지는
+    호출부에서 별도 버튼 두 개로 명확하게 나눠 고르게 한다."""
+    b = config.BRAND
     all_profs = sorted(set(counts1) | set(counts2))
     if not all_profs:
         st.caption("데이터가 없어요.")
         return
-    tdf = pd.DataFrame({
-        "교수님": all_profs,
-        "1지망 인원": [int(counts1.get(p, 0)) for p in all_profs],
-        "2지망 인원": [int(counts2.get(p, 0)) for p in all_profs],
-    })
-    event = st.dataframe(
-        tdf, use_container_width=True, hide_index=True,
-        on_select="rerun", selection_mode="single-row", key=f"prof_summary_{state_key}",
+    box_key = f"pst_box_{state_key}"
+    with st.container(key=box_key):
+        tdf = pd.DataFrame({
+            "교수님": all_profs,
+            "1지망 인원": [int(counts1.get(p, 0)) for p in all_profs],
+            "2지망 인원": [int(counts2.get(p, 0)) for p in all_profs],
+        }).sort_values(["1지망 인원", "2지망 인원"], ascending=False)
+        event = st.dataframe(
+            tdf, use_container_width=True, hide_index=True,
+            on_select="rerun", selection_mode="single-row", key=f"prof_summary_{state_key}",
+        )
+        rows = (event or {}).get("selection", {}).get("rows", [])
+        st.session_state[state_key] = tdf.iloc[rows[0]]["교수님"] if rows else None
+    _render(
+        "<style>"
+        f'.st-key-{box_key} {{ background:#fff;border:1px solid {b["primary_light"]};'
+        f'border-left:4px solid {b["primary"]};border-radius:10px;padding:16px 18px; }}'
+        "</style>"
     )
-    rows = (event or {}).get("selection", {}).get("rows", [])
-    st.session_state[state_key] = tdf.iloc[rows[0]]["교수님"] if rows else None
 
 
 def bar_list(title: str, counts: dict):
