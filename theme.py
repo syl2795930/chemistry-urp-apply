@@ -365,11 +365,7 @@ def prof_summary_table(counts1: dict, counts2: dict, state_key: str):
     _render(
         "<style>"
         f'.st-key-{box_key} {{ background:#fff;border:1px solid {b["primary_light"]};'
-        f'border-left:4px solid {b["primary"]};border-radius:10px;padding:14px 16px;'
-        # 관리자 화면은 컬럼이 많은 '지원자 목록' 표 때문에 전체 폭을 넓게(1500px) 잡아뒀는데,
-        # 이 표는 컬럼이 3개뿐이라 그 폭을 그대로 다 쓰면 과하게 늘어나 보인다.
-        # 적당한 최대 폭으로 제한하고 가운데 정렬해서 비율을 맞춘다.
-        "max-width:640px;margin-left:auto;margin-right:auto; }"
+        f'border-left:4px solid {b["primary"]};border-radius:10px;padding:14px 16px; }}'
         "</style>"
     )
 
