@@ -309,25 +309,25 @@ def notice_detail_card(program, detail):
     _render(html)
 
 
-def clickable_bar_chart(title: str, counts: dict, state_key: str):
-    """교수님별 인원수를 컴팩트한 표로 보여주고, 행을 누르면 그 교수님이 선택되게 한다.
-    '인원' 칸은 진행바(ProgressColumn)로 표시해서 막대그래프 같은 느낌을 유지하면서도,
-    plotly 차트보다 훨씬 공간을 적게 쓰고 표시 오류도 없다.
-    선택된 값은 st.session_state[state_key]에 저장한다 (호출부에서 읽어서 목록을 보여줄 것)."""
-    st.markdown(f"**{title}**")
-    if not counts:
+def prof_summary_table(counts1: dict, counts2: dict, state_key: str):
+    """1지망/2지망 표를 따로 두지 않고 '교수님 | 1지망 인원 | 2지망 인원' 한 표로 합쳐서 보여준다.
+    행을 누르면 그 교수님이 선택되고, 선택된 교수님 이름을 st.session_state[state_key]에 저장한다
+    (호출부에서 읽어서 1지망·2지망 지원자를 함께 보여줄 것)."""
+    all_profs = sorted(set(counts1) | set(counts2))
+    if not all_profs:
         st.caption("데이터가 없어요.")
         return
-    items = sorted(counts.items(), key=lambda kv: -kv[1])
-    cdf = pd.DataFrame({"교수님": [k for k, _ in items], "인원": [v for _, v in items]})
-    max_v = int(cdf["인원"].max())
+    tdf = pd.DataFrame({
+        "교수님": all_profs,
+        "1지망 인원": [int(counts1.get(p, 0)) for p in all_profs],
+        "2지망 인원": [int(counts2.get(p, 0)) for p in all_profs],
+    })
     event = st.dataframe(
-        cdf, use_container_width=True, hide_index=True,
-        on_select="rerun", selection_mode="single-row", key=f"prof_df_{state_key}",
-        column_config={"인원": st.column_config.ProgressColumn("인원", min_value=0, max_value=max_v, format="%d명")},
+        tdf, use_container_width=True, hide_index=True,
+        on_select="rerun", selection_mode="single-row", key=f"prof_summary_{state_key}",
     )
     rows = (event or {}).get("selection", {}).get("rows", [])
-    st.session_state[state_key] = cdf.iloc[rows[0]]["교수님"] if rows else None
+    st.session_state[state_key] = tdf.iloc[rows[0]]["교수님"] if rows else None
 
 
 def bar_list(title: str, counts: dict):
