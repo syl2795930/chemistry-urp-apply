@@ -338,12 +338,11 @@ def clickable_bar_chart(title: str, counts: dict, state_key: str):
     )
 
 
-def prof_summary_table(counts1: dict, counts2: dict, state_key: str, cols: int = 4):
-    """세로로 한 줄씩 쌓는 목록은 교수님이 23명, 앞으로 더 늘어나면 세로로 계속 길어질 수밖에
-    없다. 그래서 목록이 아니라 '격자(그리드)'로 바꿔서 가로 공간도 같이 쓴다 — 23명이면
-    4칸씩 6줄 정도라, 세로 목록(23줄)보다 훨씬 짧아지고 인원이 늘어도 훨씬 덜 늘어난다.
-    칸 안에는 교수님 짧은 이름 + 1지망/2지망 숫자만 넣고, 연구실명 전체는 마우스를 올리면
-    보이는 도움말(help)로 뺐다. 칸을 누르면 그 교수님을 선택 상태로 저장한다."""
+def prof_summary_table(counts1: dict, counts2: dict, state_key: str):
+    """표(st.dataframe) + 진행바(ProgressColumn) 조합. 막대 길이로 한눈에 비교가 되면서도
+    표라서 한 줄이 짧아(≈35px) 교수님이 많아져도 세로로 크게 늘어나지 않는다.
+    체크박스는 표의 행 선택 기능에 기본으로 붙는 것이라 뺄 수 없지만, 그 대신 '한눈에 비교'와
+    '공간 절약'을 둘 다 챙기는 절충안. 행을 누르면 그 교수님을 선택 상태로 저장한다."""
     b = config.BRAND
     all_profs = sorted(set(counts1) | set(counts2),
                         key=lambda p: -(counts1.get(p, 0) + counts2.get(p, 0)))
@@ -352,37 +351,27 @@ def prof_summary_table(counts1: dict, counts2: dict, state_key: str, cols: int =
         return
     box_key = f"pst_box_{state_key}"
     with st.container(key=box_key):
-        for i in range(0, len(all_profs), cols):
-            row_profs = all_profs[i:i + cols]
-            row_cols = st.columns(cols)
-            for c, p in zip(row_cols, row_profs):
-                n1, n2 = int(counts1.get(p, 0)), int(counts2.get(p, 0))
-                active = st.session_state.get(state_key) == p
-                short = p.split(" 교수님")[0].strip() or p
-                safe = re.sub(r"[^0-9a-zA-Z가-힣]", "_", p)
-                with c:
-                    if st.button(f"{short}\n\n1지망 {n1} · 2지망 {n2}",
-                                 key=f"pst_btn_{state_key}_{safe}", use_container_width=True,
-                                 type=("primary" if active else "secondary"), help=p):
-                        st.session_state[state_key] = None if active else p
-                        st.rerun()
+        tdf = pd.DataFrame({
+            "교수님": all_profs,
+            "1지망": [int(counts1.get(p, 0)) for p in all_profs],
+            "2지망": [int(counts2.get(p, 0)) for p in all_profs],
+        })
+        max1 = max(1, int(tdf["1지망"].max()))
+        max2 = max(1, int(tdf["2지망"].max()))
+        event = st.dataframe(
+            tdf, use_container_width=True, hide_index=True,
+            on_select="rerun", selection_mode="single-row", key=f"prof_summary_{state_key}",
+            column_config={
+                "1지망": st.column_config.ProgressColumn("1지망", min_value=0, max_value=max1, format="%d명"),
+                "2지망": st.column_config.ProgressColumn("2지망", min_value=0, max_value=max2, format="%d명"),
+            },
+        )
+        rows = (event or {}).get("selection", {}).get("rows", [])
+        st.session_state[state_key] = tdf.iloc[rows[0]]["교수님"] if rows else None
     _render(
         "<style>"
         f'.st-key-{box_key} {{ background:#fff;border:1px solid {b["primary_light"]};'
-        f'border-left:4px solid {b["primary"]};border-radius:10px;padding:14px 12px 8px; }}'
-        f'.st-key-{box_key} div[data-testid="stButton"] {{ margin-bottom:8px; }}'
-        f'.st-key-{box_key} button {{ text-align:center !important; border-radius:8px !important; '
-        f'border:none !important; background:{b["page_bg"]} !important; height:auto !important; '
-        "padding:8px 6px !important; }"
-        f'.st-key-{box_key} button div[data-testid="stMarkdownContainer"] > p:nth-of-type(1) {{'
-        f'font-size:13px;font-weight:700;margin:0;color:{b["primary_dark"]}; }}'
-        f'.st-key-{box_key} button[kind="primary"] div[data-testid="stMarkdownContainer"] > p:nth-of-type(1) {{'
-        "color:#fff !important; }"
-        f'.st-key-{box_key} button div[data-testid="stMarkdownContainer"] > p:nth-of-type(2) {{'
-        f'font-size:12px;font-weight:600;margin:3px 0 0;color:{b["primary"]}; }}'
-        f'.st-key-{box_key} button[kind="primary"] div[data-testid="stMarkdownContainer"] > p:nth-of-type(2) {{'
-        "color:#fff !important; }"
-        f'.st-key-{box_key} button[kind="primary"] {{ background:{b["primary"]} !important; }}'
+        f'border-left:4px solid {b["primary"]};border-radius:10px;padding:14px 16px; }}'
         "</style>"
     )
 
