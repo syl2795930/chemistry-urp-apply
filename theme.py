@@ -339,32 +339,38 @@ def clickable_bar_chart(title: str, counts: dict, state_key: str):
 
 
 def prof_summary_table(counts1: dict, counts2: dict, state_key: str):
-    """'교수님 | 1지망 인원 | 2지망 인원' 한 표로 합쳐서 한눈에 보여준다 (공간 절약).
-    표 자체는 '행 선택'만 지원해서(칸 단위 클릭 감지는 아직 불안정한 최신 기능이라 피함),
-    행을 누르면 그 교수님을 선택 상태로 저장한다. 1지망/2지망 중 어느 목록을 볼지는
-    호출부에서 별도 버튼 두 개로 명확하게 나눠 고르게 한다."""
+    """'교수님 | 1지망 인원 | 2지망 인원'을 한 목록으로 한눈에 보여준다 (공간 절약).
+    st.dataframe(표)은 캔버스로 그려져서 헤더/줄 색 같은 세부 스타일을 CSS로 못 건드리는 한계가
+    있어 계속 '투박해' 보였다. 그래서 실제 버튼(각 교수님이 통째로 하나의 버튼)으로 바꿔서
+    자주색 포인트를 제대로 넣고, 체크박스 없이 행 아무 곳이나 누르면 바로 선택되게 했다.
+    선택된 교수님 이름은 st.session_state[state_key]에 저장한다. 1지망/2지망 중 어느 목록을
+    볼지는 호출부에서 별도 버튼 두 개로 명확하게 나눠 고르게 한다."""
     b = config.BRAND
-    all_profs = sorted(set(counts1) | set(counts2))
+    all_profs = sorted(set(counts1) | set(counts2),
+                        key=lambda p: -(counts1.get(p, 0) + counts2.get(p, 0)))
     if not all_profs:
         st.caption("데이터가 없어요.")
         return
     box_key = f"pst_box_{state_key}"
     with st.container(key=box_key):
-        tdf = pd.DataFrame({
-            "교수님": all_profs,
-            "1지망 인원": [int(counts1.get(p, 0)) for p in all_profs],
-            "2지망 인원": [int(counts2.get(p, 0)) for p in all_profs],
-        }).sort_values(["1지망 인원", "2지망 인원"], ascending=False)
-        event = st.dataframe(
-            tdf, use_container_width=True, hide_index=True,
-            on_select="rerun", selection_mode="single-row", key=f"prof_summary_{state_key}",
-        )
-        rows = (event or {}).get("selection", {}).get("rows", [])
-        st.session_state[state_key] = tdf.iloc[rows[0]]["교수님"] if rows else None
+        for p in all_profs:
+            n1, n2 = int(counts1.get(p, 0)), int(counts2.get(p, 0))
+            active = st.session_state.get(state_key) == p
+            safe = re.sub(r"[^0-9a-zA-Z가-힣]", "_", p)
+            if st.button(f"{p}   ·   1지망 {n1}명   ·   2지망 {n2}명",
+                         key=f"pst_btn_{state_key}_{safe}", use_container_width=True,
+                         type=("primary" if active else "secondary")):
+                st.session_state[state_key] = None if active else p
+                st.rerun()
     _render(
         "<style>"
         f'.st-key-{box_key} {{ background:#fff;border:1px solid {b["primary_light"]};'
-        f'border-left:4px solid {b["primary"]};border-radius:10px;padding:16px 18px; }}'
+        f'border-left:4px solid {b["primary"]};border-radius:10px;padding:14px 16px; }}'
+        f'.st-key-{box_key} div[data-testid="stButton"] {{ margin-bottom:5px; }}'
+        f'.st-key-{box_key} button {{ text-align:left !important; border-radius:6px !important; '
+        f'border:none !important; background:{b["page_bg"]} !important; font-weight:500 !important; }}'
+        f'.st-key-{box_key} button[kind="primary"] {{ background:{b["primary"]} !important; '
+        "color:#fff !important; font-weight:700 !important; }"
         "</style>"
     )
 
