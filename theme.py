@@ -339,12 +339,12 @@ def clickable_bar_chart(title: str, counts: dict, state_key: str):
 
 
 def prof_summary_table(counts1: dict, counts2: dict, state_key: str):
-    """'교수님 | 1지망 인원 | 2지망 인원'을 한 목록으로 한눈에 보여준다 (공간 절약).
-    st.dataframe(표)은 캔버스로 그려져서 헤더/줄 색 같은 세부 스타일을 CSS로 못 건드리는 한계가
-    있어 계속 '투박해' 보였다. 그래서 실제 버튼(각 교수님이 통째로 하나의 버튼)으로 바꿔서
-    자주색 포인트를 제대로 넣고, 체크박스 없이 행 아무 곳이나 누르면 바로 선택되게 했다.
-    선택된 교수님 이름은 st.session_state[state_key]에 저장한다. 1지망/2지망 중 어느 목록을
-    볼지는 호출부에서 별도 버튼 두 개로 명확하게 나눠 고르게 한다."""
+    """'교수님 | 1지망 | 2지망'을 한 줄짜리 버튼으로 보여준다. 표(st.dataframe)는 촘촘하지만
+    캔버스 위젯이라 체크박스가 자동으로 붙고 색을 깊게 못 입힌다. 두 줄짜리 버튼은 색은
+    자유로웠지만 표보다 훨씬 넓었다. 그래서 버튼을 다시 쓰되 '한 줄'로 압축하고 여백을
+    최소화해서(표 한 줄과 비슷한 높이), 체크박스 없이 완전한 자주색 스타일 + 촘촘함을
+    같이 노린다. 숫자는 굵게 강조해서 옅어 보이지 않게 한다.
+    행을 누르면 그 교수님을 선택 상태로 저장한다."""
     b = config.BRAND
     all_profs = sorted(set(counts1) | set(counts2),
                         key=lambda p: -(counts1.get(p, 0) + counts2.get(p, 0)))
@@ -357,7 +357,7 @@ def prof_summary_table(counts1: dict, counts2: dict, state_key: str):
             n1, n2 = int(counts1.get(p, 0)), int(counts2.get(p, 0))
             active = st.session_state.get(state_key) == p
             safe = re.sub(r"[^0-9a-zA-Z가-힣]", "_", p)
-            if st.button(f"{p}\n\n1지망 {n1}명 　·　 2지망 {n2}명",
+            if st.button(f"{p}　　**1지망 {n1}명**　·　**2지망 {n2}명**",
                          key=f"pst_btn_{state_key}_{safe}", use_container_width=True,
                          type=("primary" if active else "secondary")):
                 st.session_state[state_key] = None if active else p
@@ -365,22 +365,14 @@ def prof_summary_table(counts1: dict, counts2: dict, state_key: str):
     _render(
         "<style>"
         f'.st-key-{box_key} {{ background:#fff;border:1px solid {b["primary_light"]};'
-        f'border-left:4px solid {b["primary"]};border-radius:10px;padding:14px 16px; }}'
-        f'.st-key-{box_key} div[data-testid="stButton"] {{ margin-bottom:6px; }}'
-        f'.st-key-{box_key} button {{ text-align:left !important; border-radius:6px !important; '
-        f'border:none !important; background:{b["page_bg"]} !important; height:auto !important; '
-        "padding:8px 14px !important; }"
+        f'border-left:4px solid {b["primary"]};border-radius:10px;padding:10px 12px; }}'
+        f'.st-key-{box_key} div[data-testid="stButton"] {{ margin-bottom:3px; }}'
+        f'.st-key-{box_key} button {{ text-align:left !important; border-radius:5px !important; '
+        f'border:none !important; background:{b["page_bg"]} !important; min-height:auto !important; '
+        "padding:5px 12px !important; font-size:13px !important; }"
+        f'.st-key-{box_key} button p {{ color:{b["primary_dark"]} !important; margin:0 !important; }}'
         f'.st-key-{box_key} button[kind="primary"] {{ background:{b["primary"]} !important; }}'
-        # 이름 줄
-        f'.st-key-{box_key} button div[data-testid="stMarkdownContainer"] > p:nth-of-type(1) {{'
-        f'font-size:14px;font-weight:600;margin:0;color:{b["primary_dark"]}; }}'
-        f'.st-key-{box_key} button[kind="primary"] div[data-testid="stMarkdownContainer"] > p:nth-of-type(1) {{'
-        "color:#fff !important; }"
-        # 인원 숫자 줄 — 이게 잘 안 보인다는 피드백을 받아서 크고 굵게 키움
-        f'.st-key-{box_key} button div[data-testid="stMarkdownContainer"] > p:nth-of-type(2) {{'
-        f'font-size:16px;font-weight:800;margin:3px 0 0;color:{b["primary"]}; }}'
-        f'.st-key-{box_key} button[kind="primary"] div[data-testid="stMarkdownContainer"] > p:nth-of-type(2) {{'
-        "color:#fff !important; }"
+        f'.st-key-{box_key} button[kind="primary"] p {{ color:#fff !important; }}'
         "</style>"
     )
 
