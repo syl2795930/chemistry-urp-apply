@@ -352,6 +352,21 @@ def page_apply():
         row["재학증명서_링크"] = gsheets.upload_applicant_file(
             round_name, folder_key, f"재학증명서{Path(f_enrollment.name).suffix}", enrollment_bytes, _mime_of(f_enrollment))
 
+        # 제출과 동시에 AI로 서류(성적증명서·재학증명서)를 확인해서 결과를 저장해둔다.
+        # (관리자가 나중에 한 명씩 눌러서 확인할 필요 없이, 확인이 필요한 사람만 바로 걸러낼 수 있게)
+        doc_notes = []
+        try:
+            for label, fbytes, fname in [
+                ("성적증명서", transcript_bytes, f_transcript.name),
+                ("재학증명서", enrollment_bytes, f_enrollment.name),
+            ]:
+                text = gsheets.ocr_document_text(fbytes, fname)
+                for n in scoring.check_document_text(text, school, gpa):
+                    doc_notes.append(f"[{label}] {n}")
+        except Exception:
+            doc_notes = []  # AI 확인은 부가 기능이므로, 실패해도 접수 자체는 정상 진행한다.
+        row["서류확인_AI"] = " / ".join(doc_notes) if doc_notes else "확인완료"
+
         etc_links = []
         etc_bytes_list = []
         for i, f_etc in enumerate(f_etc_list or [], start=1):

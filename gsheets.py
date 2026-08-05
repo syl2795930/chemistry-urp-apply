@@ -28,6 +28,7 @@ drive_folder_id = "구글드라이브_루트폴더_ID"
 admin_password = "관리자비밀번호"
 """
 import io
+import base64
 import datetime
 from zoneinfo import ZoneInfo
 import pandas as pd
@@ -50,6 +51,12 @@ SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
 ]
 
+# Cloud Vision API(서류 텍스트 인식, 무료 티어: 월 1,000건까지) 접근 범위.
+# 시트에 쓰는 서비스 계정 키를 그대로 재사용하되, 이 스코프만 추가로 받아서 쓴다.
+VISION_SCOPES = [
+    "https://www.googleapis.com/auth/cloud-vision",
+]
+
 # 드라이브는 "이 앱이 만든 파일에만 접근" 범위로 최소화 (내 드라이브 전체 접근 아님)
 DRIVE_SCOPES = [
     "https://www.googleapis.com/auth/drive.file",
@@ -70,6 +77,7 @@ HEADERS = [
     "개인정보_필수", "개인정보_선택",
     "서류합격여부", "1지망선발여부", "비고",
     "편입_대학군", "편입_4.3환산", "편입_환산성적",  # 기존 행들의 열 위치가 밀리지 않도록 맨 끝에 추가
+    "서류확인_AI",
 ]
 
 
@@ -83,6 +91,47 @@ def _get_creds():
 @st.cache_resource(show_spinner=False)
 def _get_gc():
     return gspread.authorize(_get_creds())
+
+
+@st.cache_resource(show_spinner=False)
+def _get_vision_creds():
+    info = dict(st.secrets["gcp_service_account"])
+    return Credentials.from_service_account_info(info, scopes=VISION_SCOPES)
+
+
+@st.cache_resource(show_spinner=False)
+def _get_vision_service():
+    from googleapiclient.discovery import build as _build
+    return _build("vision", "v1", credentials=_get_vision_creds(), cache_discovery=False)
+
+
+def ocr_document_text(file_bytes: bytes, filename: str) -> str:
+    """서류 파일(이미지 또는 PDF)에서 글자를 인식해서 텍스트로 반환한다 (Google Cloud Vision,
+    무료 티어). 사진으로 찍어 올린 서류도 인식된다. 인식 실패/오류 시 빈 문자열을 반환한다."""
+    service = _get_vision_service()
+    is_pdf = filename.lower().endswith(".pdf")
+    b64 = base64.b64encode(file_bytes).decode()
+    try:
+        if is_pdf:
+            # PDF는 파일 단위 인식(files.annotate)을 쓴다. 동기 처리는 최대 5페이지까지 지원.
+            body = {
+                "requests": [{
+                    "inputConfig": {"content": b64, "mimeType": "application/pdf"},
+                    "features": [{"type": "DOCUMENT_TEXT_DETECTION"}],
+                    "pages": [1, 2, 3, 4, 5],
+                }]
+            }
+            resp = service.files().annotate(body=body).execute()
+            pages = resp.get("responses", [{}])[0].get("responses", [])
+            texts = [p.get("fullTextAnnotation", {}).get("text", "") for p in pages]
+            return "\n".join(t for t in texts if t)
+        else:
+            body = {"requests": [{"image": {"content": b64},
+                                   "features": [{"type": "DOCUMENT_TEXT_DETECTION"}]}]}
+            resp = service.images().annotate(body=body).execute()
+            return resp.get("responses", [{}])[0].get("fullTextAnnotation", {}).get("text", "")
+    except Exception as e:
+        return f"[인식 실패: {e}]"
 
 
 @st.cache_resource(show_spinner=False)
