@@ -143,3 +143,32 @@ def doc_status(grade):
 
 def safe_name(x):
     return re.sub(r'[\\/:*?"<>|]', "_", str(x).strip()) or "unknown"
+
+
+def check_document_text(ocr_text: str, school: str, gpa: str) -> list:
+    """OCR로 인식한 서류 텍스트 안에 학생이 입력한 학교명·평점이 실제로 등장하는지
+    가볍게 점검한다. 완벽한 서류 검증이 아니라 '한 번 더 확인해볼 만한 부분'을 짚어주는
+    용도라, 결과는 참고용 안내 메시지 목록으로 반환한다 (빈 목록이면 특이사항 없음)."""
+    notes = []
+    text = str(ocr_text or "")
+    if not text.strip() or text.startswith("[인식 실패"):
+        notes.append("서류에서 글자를 인식하지 못했어요 (사진이 흐리거나 형식이 특이할 수 있어요).")
+        return notes
+
+    norm_text = re.sub(r"\s+", "", text)
+
+    school_key = re.sub(r"\s+", "", str(school or "").replace("대학교", "").replace("대학", ""))
+    if school_key and school_key not in norm_text:
+        notes.append(f"서류 안에서 '{school}' 표기를 찾지 못했어요 — 학교명을 다시 확인해보세요.")
+
+    gpa_str = str(gpa or "").strip()
+    if gpa_str:
+        try:
+            gpa_val = float(gpa_str)
+            # 소수점 표기가 조금 다를 수 있어(3.85 vs 3.850 등) 정수부.소수1~2자리 정도로 느슨하게 찾는다.
+            candidates = {f"{gpa_val:.1f}", f"{gpa_val:.2f}", gpa_str}
+            if not any(c in text for c in candidates):
+                notes.append(f"서류 안에서 입력하신 평점 '{gpa_str}'과 일치하는 숫자를 찾지 못했어요.")
+        except ValueError:
+            pass
+    return notes
