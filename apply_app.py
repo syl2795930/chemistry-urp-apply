@@ -97,16 +97,15 @@ def _subscribe_dialog():
 
 def page_home():
     p = config.PROGRAM
-    hc1, hc2 = st.columns([5, 1.3])
-    with hc2:
-        st.write("")
-        if st.button("📩 소식 받기", key="subscribe_open", use_container_width=True):
-            _subscribe_dialog()
-    with hc1:
-        if theme.hero_with_cta(p["name"], p["intro"], "지원서 작성하기 →", "hero_cta"):
-            st.session_state["submitted_ok"] = False
-            st.session_state["view"] = "apply"
-            st.rerun()
+    hero_clicked, sub_clicked = theme.hero_with_cta(
+        p["name"], p["intro"], "지원서 작성하기 →", "hero_cta",
+        secondary_label="📩 소식 받기", secondary_key="subscribe_open")
+    if hero_clicked:
+        st.session_state["submitted_ok"] = False
+        st.session_state["view"] = "apply"
+        st.rerun()
+    if sub_clicked:
+        _subscribe_dialog()
 
     theme.info_cards([
         ("모집대상", config.NOTICE_DETAIL["target_short"], "자세한 조건은 아래 모집공고를 확인하세요"),

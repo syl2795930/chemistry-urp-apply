@@ -119,12 +119,16 @@ def inject(wide: bool = False):
     _render(css)
 
 
-def hero_with_cta(title: str, subtitle: str, cta_label: str, cta_key: str) -> bool:
+def hero_with_cta(title: str, subtitle: str, cta_label: str, cta_key: str,
+                   secondary_label: str = None, secondary_key: str = None) -> tuple:
     """분홍 히어로 박스 하나 안에 제목/설명/마스코트/버튼을 전부 넣는다.
     (컨테이너 자체에 테두리를 입히고, 그 안에 실제 버튼을 넣기 때문에 상자가 둘로 갈라지지 않는다)
-    버튼이 눌리면 True를 반환한다."""
+    secondary_label을 주면, 메인 버튼 바로 옆에 작은 보조 버튼(예: 소식 받기)을 같은 카드 안에 넣는다
+    — 카드 밖 옆칸에 따로 두면 어색해 보여서, 카드 안에 자연스럽게 붙였다.
+    (메인 버튼 클릭 여부, 보조 버튼 클릭 여부) 튜플을 반환한다."""
     b = config.BRAND
     clicked = False
+    secondary_clicked = False
     with st.container(key="hero_box"):
         col1, col2 = st.columns([3, 1])
         with col1:
@@ -132,7 +136,14 @@ def hero_with_cta(title: str, subtitle: str, cta_label: str, cta_key: str) -> bo
                 f'<div style="font-size:24px;font-weight:700;margin:4px 0 8px;color:{b["primary_dark"]};">{title}</div>'
                 f'<p style="font-size:14px;color:#444;line-height:1.7;margin:0 0 16px;">{subtitle}</p>'
             )
-            clicked = st.button(cta_label, key=cta_key, type="primary")
+            if secondary_label:
+                bcol1, bcol2 = st.columns([1.6, 1])
+                with bcol1:
+                    clicked = st.button(cta_label, key=cta_key, type="primary", use_container_width=True)
+                with bcol2:
+                    secondary_clicked = st.button(secondary_label, key=secondary_key, use_container_width=True)
+            else:
+                clicked = st.button(cta_label, key=cta_key, type="primary")
         with col2:
             _render(
                 f'<img src="data:image/png;base64,{MASCOT_B64}" '
@@ -144,7 +155,7 @@ def hero_with_cta(title: str, subtitle: str, cta_label: str, cta_key: str) -> bo
         "border-radius:10px; padding:20px 24px 24px 24px; margin-bottom:14px; }"
         "</style>"
     )
-    return clicked
+    return clicked, secondary_clicked
 
 
 def topbar(title: str = "POSTECH 화학과 연구참여 프로그램"):
