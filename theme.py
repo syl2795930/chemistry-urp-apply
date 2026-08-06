@@ -86,7 +86,7 @@ def inline_error(text: str):
 
 def inject(wide: bool = False):
     b = config.BRAND
-    max_w = "1500px" if wide else "1150px"
+    max_w = "1850px" if wide else "1150px"
     css = (
         "<style>"
         f".stApp {{ background-color: {b['page_bg']}; }}"
