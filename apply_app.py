@@ -95,6 +95,35 @@ def page_home():
     theme.notice_board(config.NOTICES, p)
     theme.program_history_table(config.PAST_PROGRAMS)
 
+    st.divider()
+    with st.container(key="subscribe_box"):
+        st.markdown("**소식 받기**")
+        st.caption("지원 여부와 상관없이, 원하시는 소식을 이메일로 받아보실 수 있어요.")
+        with st.form("subscribe_form", clear_on_submit=True, border=False):
+            sc1, sc2 = st.columns([2, 3])
+            with sc1:
+                sub_email = st.text_input("이메일", placeholder="example@school.ac.kr", label_visibility="collapsed")
+            with sc2:
+                sb1, sb2, sb3 = st.columns([2, 2, 1])
+                with sb1:
+                    sub_research = st.checkbox("연구참여 소식")
+                with sb2:
+                    sub_admission = st.checkbox("입시 관련 정보")
+                with sb3:
+                    sub_submit = st.form_submit_button("신청", use_container_width=True)
+        if sub_submit:
+            if not _is_valid_email(sub_email):
+                st.error("이메일 형식을 확인해주세요.")
+            elif not (sub_research or sub_admission):
+                st.error("받고 싶은 소식을 하나 이상 선택해주세요.")
+            else:
+                gsheets.add_subscriber(sub_email, sub_research, sub_admission)
+                st.success("신청되었습니다. 감사합니다!")
+    theme.inject_css(
+        f'.st-key-subscribe_box {{ background:#fff;border:1px solid {config.BRAND["primary_light"]};'
+        "border-radius:10px;padding:16px 18px; }"
+    )
+
 
 # ══════════════════════════ 연구실 소개 ══════════════════════════
 def page_labs():

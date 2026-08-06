@@ -351,6 +351,9 @@ def archive_and_delete_round(df: "pd.DataFrame", round_key: str, progress_cb=Non
 QNA_WORKSHEET_NAME = "문의"
 QNA_HEADERS = ["id", "등록일시", "이름", "비밀번호", "질문", "답변", "답변여부"]
 
+SUB_WORKSHEET_NAME = "소식구독"
+SUB_HEADERS = ["등록일시", "이메일", "연구참여소식", "입시정보"]
+
 
 def _get_qna_worksheet():
     gc = _get_gc()
@@ -402,4 +405,28 @@ def delete_question(qid: str):
     cell = ws.find(str(qid), in_column=QNA_HEADERS.index("id") + 1)
     if cell is not None:
         ws.delete_rows(cell.row)
+
+
+# ── 소식 구독 (홈 화면의 별도 구독 신청 — 지원서와 무관) ──────────────────
+def _get_sub_worksheet():
+    gc = _get_gc()
+    sh = gc.open_by_key(st.secrets["app"]["sheet_id"])
+    try:
+        ws = sh.worksheet(SUB_WORKSHEET_NAME)
+    except gspread.WorksheetNotFound:
+        ws = sh.add_worksheet(title=SUB_WORKSHEET_NAME, rows=1000, cols=len(SUB_HEADERS) + 2)
+    first_row = ws.row_values(1)
+    if first_row != SUB_HEADERS:
+        ws.update("A1", [SUB_HEADERS])
+    return ws
+
+
+def add_subscriber(email: str, news_research: bool, news_admission: bool):
+    """홈 화면 '소식 받기' 신청을 시트에 기록한다."""
+    ws = _get_sub_worksheet()
+    now = now_kst().strftime("%Y-%m-%d %H:%M")
+    ws.append_row(
+        [now, email, "Y" if news_research else "N", "Y" if news_admission else "N"],
+        value_input_option="USER_ENTERED",
+    )
 
