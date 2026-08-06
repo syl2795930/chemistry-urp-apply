@@ -46,6 +46,11 @@ def _is_valid_email(v: str) -> bool:
     return bool(re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", str(v).strip()))
 
 
+def _is_valid_ym(v: str) -> bool:
+    """입학연월 형식(YYYY-MM) 검증. 월은 01~12만 허용."""
+    return bool(re.match(r"^\d{4}-(0[1-9]|1[0-2])$", str(v).strip()))
+
+
 def _pdf_view_button(pdf_b64: str, label: str = "제출하신 내용 확인하기 (새 탭에서 열기)"):
     """화면 안(iframe)에 PDF를 끼워넣는 방식은 Streamlit 컴포넌트가 샌드박스 안에 있어서
     브라우저/환경에 따라 빈 화면만 뜨는 문제가 있었다. 그래서 버튼을 누르면 브라우저의 새 탭
@@ -169,29 +174,39 @@ def page_apply():
 
     with st.container(key="apply_box"):
         st.subheader("1. 기본 정보")
-        c1, c2 = st.columns(2)
-        with c1:
+        r1c1, r1c2 = st.columns(2)
+        with r1c1:
             name_kr = st.text_input("성명 (한글) *", placeholder="예) 홍길동", key="f_name_kr")
+        with r1c2:
+            name_en = st.text_input("성명 (영문) *", placeholder="예) Hong, Gil-Dong", key="f_name_en")
+
+        r2c1, r2c2 = st.columns(2)
+        with r2c1:
             birth = st.text_input("생년월일 *", placeholder="예) 2002.01.01", key="f_birth")
             if birth.strip() and not _is_valid_birth(birth):
                 theme.inline_error("생년월일 형식이 올바르지 않습니다. 예) 2002.01.01")
-            gender = st.selectbox("성별 *", ["남", "여"], index=None, placeholder="선택하세요", key="f_gender")
-            phone = st.text_input("휴대폰번호 *", placeholder="예) 010-1234-5678", key="f_phone")
-            if phone.strip() and not _is_valid_phone(phone):
-                theme.inline_error("휴대폰번호 형식이 올바르지 않습니다. 예) 010-1234-5678")
-        with c2:
-            name_en = st.text_input("성명 (영문) *", placeholder="예) Hong, Gil-Dong", key="f_name_en")
+        with r2c2:
             email = st.text_input("이메일 *", placeholder="예) example@school.ac.kr", key="f_email")
             if email.strip() and not _is_valid_email(email):
                 theme.inline_error("이메일 형식이 올바르지 않습니다.")
+
+        r3c1, r3c2 = st.columns(2)
+        with r3c1:
+            gender = st.selectbox("성별 *", ["남", "여"], index=None, placeholder="선택하세요", key="f_gender")
+        with r3c2:
+            phone = st.text_input("휴대폰번호 *", placeholder="예) 010-1234-5678", key="f_phone")
+            if phone.strip() and not _is_valid_phone(phone):
+                theme.inline_error("휴대폰번호 형식이 올바르지 않습니다. 예) 010-1234-5678")
 
         with st.form("apply_form", clear_on_submit=False, border=False):
             st.subheader("2. 희망 지도교수")
             c3, c4 = st.columns(2)
             with c3:
-                prof1 = st.selectbox("희망지도교수 (1지망) *", scoring.PROFESSORS, index=None, placeholder="선택하세요")
+                prof1 = st.selectbox("희망지도교수 (1지망) *", scoring.PROFESSORS_GROUPED,
+                                      index=None, placeholder="선택하세요")
             with c4:
-                prof2 = st.selectbox("희망지도교수 (2지망) *", scoring.PROFESSORS, index=None, placeholder="선택하세요")
+                prof2 = st.selectbox("희망지도교수 (2지망) *", scoring.PROFESSORS_GROUPED,
+                                      index=None, placeholder="선택하세요")
 
             st.subheader("3. 학력")
             c5, c6, c7 = st.columns(3)
@@ -201,6 +216,8 @@ def page_apply():
                 major = st.text_input("학사 전공명 *", placeholder="예) 화학과")
             with c7:
                 admit_ym = st.text_input("입학 연월 *", placeholder="예) 2022-03")
+                if admit_ym.strip() and not _is_valid_ym(admit_ym):
+                    theme.inline_error("입학 연월 형식이 올바르지 않습니다. 예) 2022-03")
 
             c8, c9, c10 = st.columns(3)
             with c8:
@@ -214,13 +231,15 @@ def page_apply():
             with st.expander("편입생인 경우에만 입력"):
                 c11, c12, c13 = st.columns(3)
                 with c11:
-                    t_school = st.text_input("전적 학사 학교명")
+                    t_school = st.text_input("전적 학사 학교명", placeholder="예) 포항공과대학교")
                     t_scale = st.selectbox("전적 기준평점(만점)", ["", "4.5 만점", "4.3 만점"])
                 with c12:
-                    t_major = st.text_input("전적 학사 전공명")
-                    t_gpa = st.text_input("전적 평점")
+                    t_major = st.text_input("전적 학사 전공명", placeholder="예) 화학과")
+                    t_gpa = st.text_input("전적 평점", placeholder="예) 3.953")
                 with c13:
-                    t_admit_ym = st.text_input("전적 학교 입학 연월")
+                    t_admit_ym = st.text_input("전적 학교 입학 연월", placeholder="예) 2022-03")
+                    if t_admit_ym.strip() and not _is_valid_ym(t_admit_ym):
+                        theme.inline_error("입학 연월 형식이 올바르지 않습니다. 예) 2022-03")
 
             st.subheader("4. 관심분야 및 지원동기")
             st.markdown("관심분야 *")
@@ -301,6 +320,12 @@ def page_apply():
         required_missing.append("생년월일 형식 (예: 2002.01.01)")
     if str(email).strip() and not _is_valid_email(email):
         required_missing.append("이메일 형식")
+    if str(admit_ym).strip() and not _is_valid_ym(admit_ym):
+        required_missing.append("입학 연월 형식 (예: 2022-03)")
+    if str(t_admit_ym).strip() and not _is_valid_ym(t_admit_ym):
+        required_missing.append("전적 학교 입학 연월 형식 (예: 2022-03)")
+    if scoring.is_group_header(prof1) or scoring.is_group_header(prof2):
+        required_missing.append("희망지도교수 (분야 제목이 아닌 교수님을 선택해주세요)")
 
     if required_missing:
         st.error("다음 항목을 확인해주세요: " + ", ".join(required_missing))

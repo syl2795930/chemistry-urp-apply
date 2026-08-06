@@ -43,6 +43,19 @@ LABS = {
 }
 PROFESSORS = sorted([f"{p['name']} 교수님({p['lab']})" for labs in LABS.values() for p in labs])
 
+# 분야(유기화학/무기화학/...)별로 묶고, 각 분야 안에서는 이름 가나다순으로 정렬한 선택 목록.
+# 분야 제목 줄("── 유기화학 ──")은 실제로 고를 수 없는 구분선 역할만 한다 (is_group_header로 구분).
+PROFESSORS_GROUPED = []
+for _field, _labs in LABS.items():
+    PROFESSORS_GROUPED.append(f"── {_field} ──")
+    PROFESSORS_GROUPED.extend(sorted(f"{p['name']} 교수님({p['lab']})" for p in _labs))
+
+
+def is_group_header(x) -> bool:
+    """드롭다운의 분야 제목 줄(구분선)인지 확인 — 실수로 이걸 선택하면 안 되므로 검증에 쓴다."""
+    s = str(x)
+    return s.startswith("── ") and s.endswith(" ──")
+
 # ── 대학별 그룹 분류 ────────────────────────────────────────────────
 UNIVERSITY_GROUPS = {
     "A": ["POSTECH", "포스텍", "포항공과대학교", "포항공대", "서울대학교", "서울대", "KAIST", "카이스트", "한국과학기술원"],
