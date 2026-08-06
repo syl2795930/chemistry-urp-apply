@@ -46,9 +46,9 @@ PROFESSORS = sorted([f"{p['name']} 교수님({p['lab']})" for labs in LABS.value
 # 분야(유기화학/무기화학/...)별로 묶고, 각 분야 안에서는 이름 가나다순으로 정렬한 선택 목록.
 # 분야 제목 줄("── 유기화학 ──")은 실제로 고를 수 없는 구분선 역할만 한다 (is_group_header로 구분).
 PROFESSORS_GROUPED = []
-for _field, _labs in LABS.items():
+for _field in sorted(LABS.keys()):
     PROFESSORS_GROUPED.append(f"── {_field} ──")
-    PROFESSORS_GROUPED.extend(sorted(f"{p['name']} 교수님({p['lab']})" for p in _labs))
+    PROFESSORS_GROUPED.extend(sorted(f"{p['name']} 교수님({p['lab']})" for p in LABS[_field]))
 
 
 def is_group_header(x) -> bool:
