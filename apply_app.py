@@ -79,6 +79,13 @@ def _pdf_view_button(pdf_b64: str, label: str = "제출하신 내용 확인하�
 # ══════════════════════════ 홈 ══════════════════════════
 @st.dialog("소식 받기")
 def _subscribe_dialog():
+    # st.dialog는 별도 렌더링 영역이라, 페이지 상단에서 한 번 넣어둔 전역 스타일이 안 닿는
+    # 것으로 보인다 (신청 버튼만 계속 기본색으로 나옴) — 그래서 팝업 안에서 직접 한 번 더 넣는다.
+    theme.inject_css(
+        'div[data-testid="stForm"] button[kind="primary"], '
+        f'button[kind="primary"] {{ background-color:{config.BRAND["primary"]} !important; '
+        f'border-color:{config.BRAND["primary"]} !important; color:#fff !important; }}'
+    )
     st.caption("지원 여부와 상관없이, 원하시는 소식을 이메일로 받아보실 수 있어요.")
     with st.form("subscribe_form", border=False):
         sub_email = st.text_input("이메일", placeholder="example@school.ac.kr")
