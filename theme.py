@@ -225,19 +225,19 @@ def top_nav_simple(active_key: str) -> tuple:
         f"border-bottom:2px solid {b['primary']} !important; border-color:{b['primary']} !important; }}"
         '.st-key-topbar_row.st-key-topbar_row button[kind="primary"] p {'
         f"color:{b['primary']} !important; font-weight:700 !important; font-size:15px !important; }}"
-        '.st-key-topbar_row div[data-testid="stHorizontalBlock"] > div:first-child button {'
+        '.st-key-topbar_row.st-key-topbar_row div[data-testid="stHorizontalBlock"] > div:first-child button {'
         f'background-image:url(data:image/png;base64,{MASCOT_B64}) !important; '
         "background-repeat:no-repeat !important; background-position:2px center !important; "
         "background-size:34px 34px !important; padding-left:46px !important; "
-        "border-bottom:2px solid transparent !important; }"
-        '.st-key-topbar_row div[data-testid="stHorizontalBlock"] > div:first-child button p {'
+        "border-bottom:2px solid transparent !important; border-color:transparent !important; }"
+        '.st-key-topbar_row.st-key-topbar_row div[data-testid="stHorizontalBlock"] > div:first-child button p {'
         "font-size:18px !important; font-weight:700 !important; }"
         # 소식받기는 텍스트를 같이 붙여서 뭔지 바로 알 수 있게 하되, 다른 메뉴들과 안 헷갈리게
         # 옅은 색 알약 모양으로 살짝만 눈에 띄게 한다.
-        '.st-key-topbar_row div[data-testid="stHorizontalBlock"] > div:last-child button {'
+        '.st-key-topbar_row.st-key-topbar_row div[data-testid="stHorizontalBlock"] > div:last-child button {'
         f"border:1px solid {b['primary_light']} !important; border-radius:999px !important; "
         "padding:3px 12px !important; }"
-        '.st-key-topbar_row div[data-testid="stHorizontalBlock"] > div:last-child button p {'
+        '.st-key-topbar_row.st-key-topbar_row div[data-testid="stHorizontalBlock"] > div:last-child button p {'
         f"color:{b['primary']} !important; font-weight:600 !important; font-size:13px !important; }}"
         "</style>"
     )
