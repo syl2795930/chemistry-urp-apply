@@ -172,7 +172,7 @@ def top_nav_simple(active_key: str) -> tuple:
     (현재 뷰, 소식받기 클릭 여부) 튜플을 반환한다."""
     b = config.BRAND
     with st.container(key="topbar_row"):
-        title_col, c2, c3, c4, c5 = st.columns([2.6, 0.62, 0.55, 0.4, 0.42], gap="small")
+        title_col, c2, c3, c4, c5 = st.columns([2.3, 0.62, 0.55, 0.4, 0.95], gap="small")
         clicked = active_key
         with title_col:
             if st.button("POSTECH 화학과 연구참여 프로그램", key="nav_logo", type="primary"):
@@ -187,7 +187,7 @@ def top_nav_simple(active_key: str) -> tuple:
             if st.button("FAQ", key="nav_faq", type=("primary" if active_key == "faq" else "secondary")):
                 clicked = "faq"
         with c5:
-            sub_clicked = st.button("📩", key="nav_subscribe", help="소식 받기")
+            sub_clicked = st.button("📩 소식받기", key="nav_subscribe", help="연구참여·입시 소식을 이메일로 받아보세요")
 
     _render(
         "<style>"
@@ -211,10 +211,13 @@ def top_nav_simple(active_key: str) -> tuple:
         "border-bottom:2px solid transparent !important; }"
         '.st-key-topbar_row div[data-testid="stHorizontalBlock"] > div:first-child button p {'
         "font-size:18px !important; font-weight:700 !important; }"
-        # 소식받기 아이콘은 다른 메뉴들과 안 헷갈리게, 옅은 색으로 살짝 눈에 띄는 정도로만
+        # 소식받기는 텍스트를 같이 붙여서 뭔지 바로 알 수 있게 하되, 다른 메뉴들과 안 헷갈리게
+        # 옅은 색 알약 모양으로 살짝만 눈에 띄게 한다.
         '.st-key-topbar_row div[data-testid="stHorizontalBlock"] > div:last-child button {'
         f"border:1px solid {b['primary_light']} !important; border-radius:999px !important; "
-        "padding:2px 8px !important; }"
+        "padding:3px 12px !important; }"
+        '.st-key-topbar_row div[data-testid="stHorizontalBlock"] > div:last-child button p {'
+        f"color:{b['primary']} !important; font-weight:600 !important; font-size:13px !important; }}"
         "</style>"
     )
     return clicked, sub_clicked

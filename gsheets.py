@@ -430,3 +430,17 @@ def add_subscriber(email: str, news_research: bool, news_admission: bool):
         value_input_option="USER_ENTERED",
     )
 
+
+@st.cache_data(ttl=20, show_spinner=False)
+def read_all_subscribers() -> pd.DataFrame:
+    """관리자 화면에서 '소식 받기' 신청자 목록을 볼 때 사용."""
+    ws = _get_sub_worksheet()
+    records = ws.get_all_records()
+    if not records:
+        return pd.DataFrame(columns=SUB_HEADERS)
+    df = pd.DataFrame(records)
+    for c in SUB_HEADERS:
+        if c not in df.columns:
+            df[c] = ""
+    return df[SUB_HEADERS]
+
