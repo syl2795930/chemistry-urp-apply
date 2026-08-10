@@ -302,13 +302,19 @@ def page_apply():
                 f_photo = st.file_uploader("증명사진 (3.5*4.5) *", type=["jpg", "jpeg", "png"])
 
             st.subheader("6. 개인정보 수집·이용 동의")
-            st.markdown("""
-> **개인정보 수집·이용 안내**
-> - **수집 항목**: 성명, 생년월일, 성별, 휴대폰번호, 이메일, 학교·전공·학점 정보(편입생의 경우 전적학교 정보 포함), 자기소개 및 지원동기, 증명사진, 성적증명서·재학증명서·기타 증빙 등 제출 서류
-> - **수집 목적**: 연구참여 프로그램(SURF/WURF) 지원자 심사 및 선발, 선발 후 프로그램 운영·연락
-> - **보유 및 이용 기간**: 접수일로부터 1년간 보관 후 파기
-> - 위 개인정보 수집·이용에 동의하지 않으실 경우, 지원 접수가 제한됩니다.
-            """)
+            st.markdown(
+                '<div style="font-size:12.5px;color:#777;line-height:1.7;background:#F9F1F6;'
+                'border-radius:6px;padding:10px 14px;margin-bottom:8px;">'
+                '<b>개인정보 수집·이용 안내</b><br>'
+                '· 수집 항목: 성명, 생년월일, 성별, 휴대폰번호, 이메일, 학교·전공·학점 정보'
+                '(편입생의 경우 전적학교 정보 포함), 자기소개 및 지원동기, 증명사진, '
+                '성적증명서·재학증명서·기타 증빙 등 제출 서류<br>'
+                '· 수집 목적: 연구참여 프로그램(SURF/WURF) 지원자 심사 및 선발, 선발 후 프로그램 운영·연락<br>'
+                '· 보유 및 이용 기간: 접수일로부터 1년간 보관 후 파기<br>'
+                '· 위 개인정보 수집·이용에 동의하지 않으실 경우, 지원 접수가 제한됩니다.'
+                '</div>',
+                unsafe_allow_html=True,
+            )
             consent_required = st.radio("개인정보 수집·이용에 동의합니다 *", ["예", "아니오"], horizontal=True, index=None)
 
             submitted = st.form_submit_button("지원서 제출", use_container_width=True, type="primary")
