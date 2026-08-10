@@ -79,19 +79,24 @@ def _pdf_view_button(pdf_b64: str, label: str = "제출하신 내용 확인하�
 # ══════════════════════════ 홈 ══════════════════════════
 @st.dialog("소식 받기")
 def _subscribe_dialog():
-    # st.dialog는 별도 렌더링 영역이라, 페이지 상단에서 한 번 넣어둔 전역 스타일이 안 닿는
-    # 것으로 보인다 (신청 버튼만 계속 기본색으로 나옴) — 그래서 팝업 안에서 직접 한 번 더 넣는다.
-    theme.inject_css(
-        'div[data-testid="stForm"] button[kind="primary"], '
-        f'button[kind="primary"] {{ background-color:{config.BRAND["primary"]} !important; '
-        f'border-color:{config.BRAND["primary"]} !important; color:#fff !important; }}'
-    )
     st.caption("지원 여부와 상관없이, 원하시는 소식을 이메일로 받아보실 수 있어요.")
     with st.form("subscribe_form", border=False):
         sub_email = st.text_input("이메일", placeholder="example@school.ac.kr")
         sub_research = st.checkbox("연구참여 프로그램(SURF/WURF) 관련 소식 받기")
         sub_admission = st.checkbox("화학과 입시(설명회 등) 관련 정보 받기")
-        sub_submit = st.form_submit_button("신청", use_container_width=True, type="primary")
+        # type="primary"로 Streamlit 기본 테마 색과 계속 충돌하던 문제를 피하려고,
+        # 이 프로젝트에서 계속 안정적으로 먹혔던 '이름표 붙은 상자로 감싸서 그 이름표로
+        # 스타일 주기' 방식으로 바꿨다. type은 기본값(secondary)으로 두고 색은 직접 입힌다.
+        with st.container(key="subscribe_submit_wrap"):
+            sub_submit = st.form_submit_button("신청", use_container_width=True)
+    theme.inject_css(
+        '.st-key-subscribe_submit_wrap button {'
+        f'background-color:{config.BRAND["primary"]} !important; '
+        f'border-color:{config.BRAND["primary"]} !important; color:#fff !important; }}'
+        '.st-key-subscribe_submit_wrap button p { color:#fff !important; font-weight:600 !important; }'
+        '.st-key-subscribe_submit_wrap button:hover {'
+        f'background-color:{config.BRAND["primary_dark"]} !important; }}'
+    )
     if sub_submit:
         if not _is_valid_email(sub_email):
             st.error("이메일 형식을 확인해주세요.")
