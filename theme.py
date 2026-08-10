@@ -119,16 +119,12 @@ def inject(wide: bool = False):
     _render(css)
 
 
-def hero_with_cta(title: str, subtitle: str, cta_label: str, cta_key: str,
-                   secondary_label: str = None, secondary_key: str = None) -> tuple:
+def hero_with_cta(title: str, subtitle: str, cta_label: str, cta_key: str) -> bool:
     """분홍 히어로 박스 하나 안에 제목/설명/마스코트/버튼을 전부 넣는다.
     (컨테이너 자체에 테두리를 입히고, 그 안에 실제 버튼을 넣기 때문에 상자가 둘로 갈라지지 않는다)
-    secondary_label을 주면, 메인 버튼 바로 옆에 작은 보조 버튼(예: 소식 받기)을 같은 카드 안에 넣는다
-    — 카드 밖 옆칸에 따로 두면 어색해 보여서, 카드 안에 자연스럽게 붙였다.
-    (메인 버튼 클릭 여부, 보조 버튼 클릭 여부) 튜플을 반환한다."""
+    버튼이 눌리면 True를 반환한다."""
     b = config.BRAND
     clicked = False
-    secondary_clicked = False
     with st.container(key="hero_box"):
         col1, col2 = st.columns([3, 1])
         with col1:
@@ -136,14 +132,7 @@ def hero_with_cta(title: str, subtitle: str, cta_label: str, cta_key: str,
                 f'<div style="font-size:24px;font-weight:700;margin:4px 0 8px;color:{b["primary_dark"]};">{title}</div>'
                 f'<p style="font-size:14px;color:#444;line-height:1.7;margin:0 0 16px;">{subtitle}</p>'
             )
-            if secondary_label:
-                bcol1, bcol2 = st.columns([1.6, 1])
-                with bcol1:
-                    clicked = st.button(cta_label, key=cta_key, type="primary", use_container_width=True)
-                with bcol2:
-                    secondary_clicked = st.button(secondary_label, key=secondary_key, use_container_width=True)
-            else:
-                clicked = st.button(cta_label, key=cta_key, type="primary")
+            clicked = st.button(cta_label, key=cta_key, type="primary")
         with col2:
             _render(
                 f'<img src="data:image/png;base64,{MASCOT_B64}" '
@@ -155,7 +144,7 @@ def hero_with_cta(title: str, subtitle: str, cta_label: str, cta_key: str,
         "border-radius:10px; padding:20px 24px 24px 24px; margin-bottom:14px; }"
         "</style>"
     )
-    return clicked, secondary_clicked
+    return clicked
 
 
 def topbar(title: str = "POSTECH 화학과 연구참여 프로그램"):
@@ -174,13 +163,16 @@ def topbar(title: str = "POSTECH 화학과 연구참여 프로그램"):
 NAV_ITEMS = [("home", "홈"), ("apply", "지원하기"), ("labs", "연구실"), ("faq", "FAQ")]
 
 
-def top_nav_simple(active_key: str) -> str:
+def top_nav_simple(active_key: str) -> tuple:
     """st.columns + st.button 기반 네비게이션. 마스코트는 제목 버튼의 배경 이미지로 넣되,
     (개별 버튼 전용 컨테이너 키가 아니라) topbar_row 안 '첫 번째 칸'이라는 구조적 위치를
-    기준으로 지정해서 확실히 적용되게 한다."""
+    기준으로 지정해서 확실히 적용되게 한다.
+    맨 오른쪽에는 '소식 받기' 아이콘을 작게 하나 둔다 — 모든 페이지 상단에 항상 같은 자리에
+    있어서, 페이지마다 레이아웃을 건드리지 않고도 눈에 띄게 하는 가장 자리를 안 차지하는 방법.
+    (현재 뷰, 소식받기 클릭 여부) 튜플을 반환한다."""
     b = config.BRAND
     with st.container(key="topbar_row"):
-        title_col, c2, c3, c4 = st.columns([2.8, 0.62, 0.55, 0.4], gap="small")
+        title_col, c2, c3, c4, c5 = st.columns([2.6, 0.62, 0.55, 0.4, 0.42], gap="small")
         clicked = active_key
         with title_col:
             if st.button("POSTECH 화학과 연구참여 프로그램", key="nav_logo", type="primary"):
@@ -194,6 +186,8 @@ def top_nav_simple(active_key: str) -> str:
         with c4:
             if st.button("FAQ", key="nav_faq", type=("primary" if active_key == "faq" else "secondary")):
                 clicked = "faq"
+        with c5:
+            sub_clicked = st.button("📩", key="nav_subscribe", help="소식 받기")
 
     _render(
         "<style>"
@@ -217,9 +211,13 @@ def top_nav_simple(active_key: str) -> str:
         "border-bottom:2px solid transparent !important; }"
         '.st-key-topbar_row div[data-testid="stHorizontalBlock"] > div:first-child button p {'
         "font-size:18px !important; font-weight:700 !important; }"
+        # 소식받기 아이콘은 다른 메뉴들과 안 헷갈리게, 옅은 색으로 살짝 눈에 띄는 정도로만
+        '.st-key-topbar_row div[data-testid="stHorizontalBlock"] > div:last-child button {'
+        f"border:1px solid {b['primary_light']} !important; border-radius:999px !important; "
+        "padding:2px 8px !important; }"
         "</style>"
     )
-    return clicked
+    return clicked, sub_clicked
 
 
 def top_tabs():

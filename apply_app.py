@@ -97,15 +97,10 @@ def _subscribe_dialog():
 
 def page_home():
     p = config.PROGRAM
-    hero_clicked, sub_clicked = theme.hero_with_cta(
-        p["name"], p["intro"], "지원서 작성하기 →", "hero_cta",
-        secondary_label="📩 소식 받기", secondary_key="subscribe_open")
-    if hero_clicked:
+    if theme.hero_with_cta(p["name"], p["intro"], "지원서 작성하기 →", "hero_cta"):
         st.session_state["submitted_ok"] = False
         st.session_state["view"] = "apply"
         st.rerun()
-    if sub_clicked:
-        _subscribe_dialog()
 
     theme.info_cards([
         ("모집대상", config.NOTICE_DETAIL["target_short"], "자세한 조건은 아래 모집공고를 확인하세요"),
@@ -467,7 +462,7 @@ if st.query_params.get("nav") == "home":
     st.query_params.clear()
     st.rerun()
 
-new_view = theme.top_nav_simple(st.session_state["view"])
+new_view, sub_clicked = theme.top_nav_simple(st.session_state["view"])
 if new_view != st.session_state["view"]:
     if new_view == "apply":
         # '지원하기' 탭을 새로 눌러서 들어올 때는 완료 화면을 초기화해서 새 폼이 뜨게 한다.
@@ -475,6 +470,8 @@ if new_view != st.session_state["view"]:
         st.session_state["submitted_ok"] = False
     st.session_state["view"] = new_view
     st.rerun()
+if sub_clicked:
+    _subscribe_dialog()
 
 view = st.session_state["view"]
 if st.session_state.get("_last_view") != view or st.session_state.pop("_force_scroll_top", False):
