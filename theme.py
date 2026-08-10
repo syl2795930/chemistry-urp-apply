@@ -102,9 +102,10 @@ def inject(wide: bool = False):
         "h2 { font-size: 1.55rem !important; margin-bottom:0.3rem !important; }"
         "h3 { font-size: 1.1rem !important; margin-bottom:0.2rem !important; }"
         '.stButton>button[kind="primary"], .stFormSubmitButton>button[kind="primary"], button[kind="primary"] {'
-        f"background-color:{b['primary']};border-color:{b['primary']};border-radius:8px;font-weight:600; }}"
+        f"background-color:{b['primary']} !important;border-color:{b['primary']} !important;"
+        "border-radius:8px !important;font-weight:600 !important;color:#fff !important; }"
         '.stButton>button[kind="primary"]:hover, .stFormSubmitButton>button[kind="primary"]:hover, button[kind="primary"]:hover {'
-        f"background-color:{b['primary_dark']};border-color:{b['primary_dark']}; }}"
+        f"background-color:{b['primary_dark']} !important;border-color:{b['primary_dark']} !important; }}"
         '.stButton>button[kind="secondary"] {'
         f"border-radius:8px;color:{b['primary_dark']}; }}"
         'div[data-testid="stExpander"] {'
