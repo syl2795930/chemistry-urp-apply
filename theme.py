@@ -93,7 +93,7 @@ def inject(wide: bool = False):
         f".block-container {{ max-width: {max_w}; margin: 0 auto; padding-top: 0.6rem; }}"
         'div[data-testid="stVerticalBlock"] { gap: 0.7rem; }'
         f'.st-key-apply_box {{ border:1px solid {b["primary_light"]}; border-radius:10px; '
-        "padding:20px 24px 4px 24px; background:#fff; margin-bottom:16px; margin-top:6px; }"
+        "padding:20px 24px 24px 24px; background:#fff; margin-bottom:16px; margin-top:6px; }"
         # 투명 처리만 해뒀던 기본 헤더 바가 여전히 자리를 차지해서 위쪽 공백의 주범이었음 -> 아예 숨김.
         # (이 안에 우리가 직접 넣은 버튼/링크가 없으므로 완전히 숨겨도 클릭 관련 문제는 생기지 않는다)
         'header[data-testid="stHeader"] { display:none !important; }'
