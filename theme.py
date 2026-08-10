@@ -101,10 +101,14 @@ def inject(wide: bool = False):
         "h1 { font-size: 1.8rem !important; margin-bottom:0.3rem !important; }"
         "h2 { font-size: 1.55rem !important; margin-bottom:0.3rem !important; }"
         "h3 { font-size: 1.1rem !important; margin-bottom:0.2rem !important; }"
-        '.stButton>button[kind="primary"], .stFormSubmitButton>button[kind="primary"], button[kind="primary"] {'
+        '.stApp .stButton>button[kind="primary"], .stApp .stFormSubmitButton>button[kind="primary"], '
+        '.stApp button[kind="primary"], .stApp button[data-testid="stBaseButton-primary"], '
+        'button[kind="primary"], button[data-testid="stBaseButton-primary"] {'
         f"background-color:{b['primary']} !important;border-color:{b['primary']} !important;"
         "border-radius:8px !important;font-weight:600 !important;color:#fff !important; }"
-        '.stButton>button[kind="primary"]:hover, .stFormSubmitButton>button[kind="primary"]:hover, button[kind="primary"]:hover {'
+        '.stApp .stButton>button[kind="primary"]:hover, .stApp .stFormSubmitButton>button[kind="primary"]:hover, '
+        '.stApp button[kind="primary"]:hover, .stApp button[data-testid="stBaseButton-primary"]:hover, '
+        'button[kind="primary"]:hover, button[data-testid="stBaseButton-primary"]:hover {'
         f"background-color:{b['primary_dark']} !important;border-color:{b['primary_dark']} !important; }}"
         '.stButton>button[kind="secondary"] {'
         f"border-radius:8px;color:{b['primary_dark']}; }}"
