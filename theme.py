@@ -200,15 +200,16 @@ def top_nav_simple(active_key: str) -> tuple:
         f'.st-key-topbar_row {{ border-bottom:1px solid {b["primary_light"]}; '
         "padding-bottom:2px; margin-bottom:6px; }"
         '.st-key-topbar_row div[data-testid="stHorizontalBlock"] { align-items:center; }'
-        '.st-key-topbar_row button[kind="primary"], .st-key-topbar_row button[kind="secondary"] {'
+        '.st-key-topbar_row.st-key-topbar_row button[kind="primary"], '
+        '.st-key-topbar_row.st-key-topbar_row button[kind="secondary"] {'
         "background:transparent !important; border:none !important; box-shadow:none !important; "
         "border-radius:0 !important; padding:6px 4px !important; min-height:auto !important; "
-        "border-bottom:2px solid transparent !important; }"
-        '.st-key-topbar_row button[kind="secondary"] p {'
+        "border-bottom:2px solid transparent !important; border-color:transparent !important; }"
+        '.st-key-topbar_row.st-key-topbar_row button[kind="secondary"] p {'
         "color:#666 !important; font-weight:500 !important; font-size:15px !important; }"
-        '.st-key-topbar_row button[kind="primary"] {'
-        f"border-bottom:2px solid {b['primary']} !important; }}"
-        '.st-key-topbar_row button[kind="primary"] p {'
+        '.st-key-topbar_row.st-key-topbar_row button[kind="primary"] {'
+        f"border-bottom:2px solid {b['primary']} !important; border-color:{b['primary']} !important; }}"
+        '.st-key-topbar_row.st-key-topbar_row button[kind="primary"] p {'
         f"color:{b['primary']} !important; font-weight:700 !important; font-size:15px !important; }}"
         '.st-key-topbar_row div[data-testid="stHorizontalBlock"] > div:first-child button {'
         f'background-image:url(data:image/png;base64,{MASCOT_B64}) !important; '
