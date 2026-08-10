@@ -317,7 +317,16 @@ def page_apply():
             )
             consent_required = st.radio("개인정보 수집·이용에 동의합니다 *", ["예", "아니오"], horizontal=True, index=None)
 
-            submitted = st.form_submit_button("지원서 제출", use_container_width=True, type="primary")
+            with st.container(key="submit_btn_wrap"):
+                submitted = st.form_submit_button("지원서 제출", use_container_width=True, type="primary")
+            theme.inject_css(
+                '.st-key-submit_btn_wrap button {'
+                f'background-color:{config.BRAND["primary"]} !important; '
+                f'border-color:{config.BRAND["primary"]} !important; color:#fff !important; }}'
+                '.st-key-submit_btn_wrap button p { color:#fff !important; font-weight:600 !important; }'
+                '.st-key-submit_btn_wrap button:hover {'
+                f'background-color:{config.BRAND["primary_dark"]} !important; }}'
+            )
 
     if not submitted:
         return
