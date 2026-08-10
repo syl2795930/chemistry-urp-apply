@@ -139,7 +139,11 @@ def page_faq():
     theme.faq_accordion(config.FAQ_ITEMS)
 
     st.markdown("**1:1 문의 게시판**")
-    with st.expander("문의 작성하기"):
+    # 안에 뭔가 입력/체크된 상태면(이름/비밀번호설정/문의내용) 펼쳐진 채로 유지한다.
+    # 안 그러면 체크박스 하나만 눌러도 재실행되면서 펼침이 기본값(닫힘)으로 되돌아가버린다.
+    _qna_open = bool(st.session_state.get("q_name")) or st.session_state.get("q_set_pw", False) \
+        or bool(st.session_state.get("q_text"))
+    with st.expander("문의 작성하기", expanded=_qna_open):
         q_name = st.text_input("이름 *", key="q_name")
         set_pw = st.checkbox("비밀번호를 설정하시겠어요? (선택, 나중에 본인 글만 확인할 때 사용)", key="q_set_pw")
         q_pw = st.text_input("비밀번호", type="password", key="q_pw") if set_pw else ""
