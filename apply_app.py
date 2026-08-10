@@ -170,7 +170,8 @@ def page_faq():
             has_pw = bool(str(r.get("비밀번호", "")).strip())
             status = "✅ 답변완료" if str(r.get("답변여부")) == "Y" else "⏳ 답변대기"
             unlock_key = f"qna_unlocked_{qid}"
-            with st.expander(f"[{status}] {r.get('이름')} — {r.get('등록일시')}"):
+            with st.expander(f"[{status}] {r.get('이름')} — {r.get('등록일시')}",
+                              expanded=st.session_state.get(unlock_key, False)):
                 if not has_pw or st.session_state.get(unlock_key):
                     st.write(r.get("질문", ""))
                     if str(r.get("답변여부")) == "Y":
@@ -489,7 +490,7 @@ if st.query_params.get("nav") == "home":
     st.query_params.clear()
     st.rerun()
 
-new_view, sub_clicked = theme.top_nav_simple(st.session_state["view"])
+new_view, sub_clicked, nav_pressed = theme.top_nav_simple(st.session_state["view"])
 if new_view != st.session_state["view"]:
     if new_view == "apply":
         # '지원하기' 탭을 새로 눌러서 들어올 때는 완료 화면을 초기화해서 새 폼이 뜨게 한다.
@@ -497,6 +498,10 @@ if new_view != st.session_state["view"]:
         st.session_state["submitted_ok"] = False
     st.session_state["view"] = new_view
     st.rerun()
+elif nav_pressed:
+    # 이미 활성화된 탭을 다시 눌렀을 때 — 뷰는 안 바뀌지만, 아래로 스크롤해둔 상태였다면
+    # 화면이 중간부터 보이는 것처럼 보이니 이때도 맨 위로 스크롤시킨다.
+    st.session_state["_force_scroll_top"] = True
 if sub_clicked:
     _subscribe_dialog()
 

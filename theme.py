@@ -174,23 +174,31 @@ def top_nav_simple(active_key: str) -> tuple:
     기준으로 지정해서 확실히 적용되게 한다.
     맨 오른쪽에는 '소식 받기' 아이콘을 작게 하나 둔다 — 모든 페이지 상단에 항상 같은 자리에
     있어서, 페이지마다 레이아웃을 건드리지 않고도 눈에 띄게 하는 가장 자리를 안 차지하는 방법.
-    (현재 뷰, 소식받기 클릭 여부) 튜플을 반환한다."""
+    (현재 뷰, 소식받기 클릭 여부, 네비 버튼이 눌렸는지 여부) 튜플을 반환한다.
+    세 번째 값은 이미 활성화된 탭을 다시 눌렀을 때(뷰는 안 바뀌지만) 스크롤을 맨 위로
+    보내는 데 쓴다 — 안 그러면 아래로 스크롤해둔 상태로 같은 탭을 다시 눌렀을 때
+    화면이 중간부터 보이는 것처럼 느껴진다."""
     b = config.BRAND
     with st.container(key="topbar_row"):
         title_col, c2, c3, c4, c5 = st.columns([2.3, 0.62, 0.55, 0.4, 0.62], gap="small")
         clicked = active_key
+        nav_pressed = False
         with title_col:
             if st.button("POSTECH 화학과 연구참여 프로그램", key="nav_logo", type="primary"):
                 clicked = "home"
+                nav_pressed = True
         with c2:
             if st.button("지원하기", key="nav_apply", type=("primary" if active_key == "apply" else "secondary")):
                 clicked = "apply"
+                nav_pressed = True
         with c3:
             if st.button("연구실", key="nav_labs", type=("primary" if active_key == "labs" else "secondary")):
                 clicked = "labs"
+                nav_pressed = True
         with c4:
             if st.button("FAQ", key="nav_faq", type=("primary" if active_key == "faq" else "secondary")):
                 clicked = "faq"
+                nav_pressed = True
         with c5:
             sub_clicked = st.button("📩 소식받기", key="nav_subscribe", use_container_width=True,
                                      help="연구참여·입시 소식을 이메일로 받아보세요")
@@ -227,7 +235,7 @@ def top_nav_simple(active_key: str) -> tuple:
         f"color:{b['primary']} !important; font-weight:600 !important; font-size:13px !important; }}"
         "</style>"
     )
-    return clicked, sub_clicked
+    return clicked, sub_clicked, nav_pressed
 
 
 def top_tabs():
