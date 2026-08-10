@@ -172,7 +172,7 @@ def top_nav_simple(active_key: str) -> tuple:
     (현재 뷰, 소식받기 클릭 여부) 튜플을 반환한다."""
     b = config.BRAND
     with st.container(key="topbar_row"):
-        title_col, c2, c3, c4, c5 = st.columns([2.3, 0.62, 0.55, 0.4, 0.95], gap="small")
+        title_col, c2, c3, c4, c5 = st.columns([2.3, 0.62, 0.55, 0.4, 0.62], gap="small")
         clicked = active_key
         with title_col:
             if st.button("POSTECH 화학과 연구참여 프로그램", key="nav_logo", type="primary"):
@@ -187,7 +187,8 @@ def top_nav_simple(active_key: str) -> tuple:
             if st.button("FAQ", key="nav_faq", type=("primary" if active_key == "faq" else "secondary")):
                 clicked = "faq"
         with c5:
-            sub_clicked = st.button("📩 소식받기", key="nav_subscribe", help="연구참여·입시 소식을 이메일로 받아보세요")
+            sub_clicked = st.button("📩 소식받기", key="nav_subscribe", use_container_width=True,
+                                     help="연구참여·입시 소식을 이메일로 받아보세요")
 
     _render(
         "<style>"
