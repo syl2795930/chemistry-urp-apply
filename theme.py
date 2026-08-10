@@ -213,6 +213,12 @@ def top_nav_simple(active_key: str) -> tuple:
         "background:transparent !important; border:none !important; box-shadow:none !important; "
         "border-radius:0 !important; padding:6px 4px !important; min-height:auto !important; "
         "border-bottom:2px solid transparent !important; border-color:transparent !important; }"
+        # 아래 hover 규칙이 핵심 — "신청" 버튼용으로 넣어둔 전역 hover 규칙(진한 자주색 박스로
+        # 채우기)이 여기 네비바 버튼에도 그대로 적용되고 있었다. 마우스를 올릴 때만 나타나서
+        # 눈에 안 띄다가 커서를 올리면 갑자기 박스로 칠해져 보였던 원인이 바로 이거였다.
+        '.st-key-topbar_row.st-key-topbar_row button[kind="primary"]:hover, '
+        '.st-key-topbar_row.st-key-topbar_row button[kind="secondary"]:hover {'
+        "background:transparent !important; }"
         '.st-key-topbar_row.st-key-topbar_row button[kind="secondary"] p {'
         "color:#666 !important; font-weight:500 !important; font-size:15px !important; }"
         '.st-key-topbar_row.st-key-topbar_row button[kind="primary"] {'
