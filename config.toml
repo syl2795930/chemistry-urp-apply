@@ -1,0 +1,16 @@
+[client]
+# 오류 발생 시 코드 내용/트레이스백이 화면에 노출되지 않도록 설정 (보안 강화)
+showErrorDetails = false
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+# 체크박스, 표 행 선택 강조색, 진행바(ProgressColumn) 등 Streamlit 기본 위젯들이 이 색을
+# 자동으로 따라가므로, 여기를 브랜드 색으로 맞춰두면 커스텀 CSS를 안 입힌 곳도 톤이 맞는다.
+# (config.py의 BRAND와 같은 값 — BRAND를 바꾸면 이 파일도 같이 맞춰줄 것)
+primaryColor = "#C81D6F"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F9F1F6"
+textColor = "#222222"
+font = "sans serif"
