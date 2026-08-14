@@ -430,6 +430,7 @@ def page_apply():
         # 제출과 동시에 AI로 서류(성적증명서·재학증명서)를 확인해서 결과를 저장해둔다.
         # (관리자가 나중에 한 명씩 눌러서 확인할 필요 없이, 확인이 필요한 사람만 바로 걸러낼 수 있게)
         doc_notes = []
+        doc_check_failed = False
         try:
             for label, fbytes, fname in [
                 ("성적증명서", transcript_bytes, f_transcript.name),
@@ -439,8 +440,14 @@ def page_apply():
                 for n in scoring.check_document_text(text, school, gpa):
                     doc_notes.append(f"[{label}] {n}")
         except Exception:
-            doc_notes = []  # AI 확인은 부가 기능이므로, 실패해도 접수 자체는 정상 진행한다.
-        row["서류확인_AI"] = " / ".join(doc_notes) if doc_notes else "확인완료"
+            # AI 확인은 부가 기능이므로, 실패해도 접수 자체는 정상 진행한다.
+            # 다만 "검사했는데 문제없음"과 "애초에 검사가 안 됨(예: 결제 미설정)"은 구분해서
+            # 저장한다 — 안 그러면 관리자 화면에서 둘 다 '확인완료'로 보여서 놓치기 쉽다.
+            doc_check_failed = True
+        if doc_check_failed:
+            row["서류확인_AI"] = "미확인(검사 실패)"
+        else:
+            row["서류확인_AI"] = " / ".join(doc_notes) if doc_notes else "확인완료"
 
         etc_links = []
         etc_bytes_list = []
