@@ -268,19 +268,30 @@ def upload_applicant_file(round_name: str, applicant_folder_name: str, filename:
 
 
 def download_file_bytes_from_link(view_link: str) -> bytes:
-    """webViewLink (또는 file id)로부터 파일 바이트 다운로드."""
+    """webViewLink (또는 file id)로부터 파일 바이트 다운로드.
+    가끔 네트워크가 순간적으로 끊기면서(BrokenPipeError 등) 실패하는 경우가 있어,
+    그런 일시적인 오류는 잠깐 쉬었다가 최대 3번까지 자동으로 다시 시도한다."""
+    import time
     drive = _get_drive()
     file_id = view_link
     if "/d/" in view_link:
         file_id = view_link.split("/d/")[1].split("/")[0]
-    request = drive.files().get_media(fileId=file_id, supportsAllDrives=True)
-    buf = io.BytesIO()
     from googleapiclient.http import MediaIoBaseDownload
-    downloader = MediaIoBaseDownload(buf, request)
-    done = False
-    while not done:
-        _, done = downloader.next_chunk()
-    return buf.getvalue()
+
+    last_err = None
+    for attempt in range(3):
+        try:
+            request = drive.files().get_media(fileId=file_id, supportsAllDrives=True)
+            buf = io.BytesIO()
+            downloader = MediaIoBaseDownload(buf, request)
+            done = False
+            while not done:
+                _, done = downloader.next_chunk()
+            return buf.getvalue()
+        except (BrokenPipeError, ConnectionError, OSError) as e:
+            last_err = e
+            time.sleep(1.5 * (attempt + 1))
+    raise last_err
 
 
 def get_file_name_from_link(view_link: str) -> str:
