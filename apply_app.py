@@ -407,12 +407,12 @@ def page_apply():
         doc_notes = []
         doc_check_failed = False
         try:
-            for label, fbytes, fname in [
-                ("성적증명서", transcript_bytes, f_transcript.name),
-                ("재학증명서", enrollment_bytes, f_enrollment.name),
+            for label, fbytes, fname, do_gpa in [
+                ("성적증명서", transcript_bytes, f_transcript.name, True),
+                ("재학증명서", enrollment_bytes, f_enrollment.name, False),
             ]:
                 text = gsheets.ocr_document_text(fbytes, fname)
-                for n in scoring.check_document_text(text, school, gpa):
+                for n in scoring.check_document_text(text, school, gpa, check_gpa=do_gpa):
                     doc_notes.append(f"[{label}] {n}")
         except Exception:
             # AI 확인은 부가 기능이므로, 실패해도 접수 자체는 정상 진행한다.

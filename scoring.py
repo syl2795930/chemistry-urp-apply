@@ -158,10 +158,12 @@ def safe_name(x):
     return re.sub(r'[\\/:*?"<>|]', "_", str(x).strip()) or "unknown"
 
 
-def check_document_text(ocr_text: str, school: str, gpa: str) -> list:
+def check_document_text(ocr_text: str, school: str, gpa: str, check_gpa: bool = True) -> list:
     """OCR로 인식한 서류 텍스트 안에 학생이 입력한 학교명·평점이 실제로 등장하는지
     가볍게 점검한다. 완벽한 서류 검증이 아니라 '한 번 더 확인해볼 만한 부분'을 짚어주는
-    용도라, 결과는 참고용 안내 메시지 목록으로 반환한다 (빈 목록이면 특이사항 없음)."""
+    용도라, 결과는 참고용 안내 메시지 목록으로 반환한다 (빈 목록이면 특이사항 없음).
+    check_gpa=False로 두면 평점은 검사하지 않는다 — 재학증명서에는 평점이 안 나오므로,
+    성적증명서를 검사할 때만 True로 넘겨야 한다."""
     notes = []
     text = str(ocr_text or "")
     if not text.strip() or text.startswith("[인식 실패"):
@@ -175,7 +177,7 @@ def check_document_text(ocr_text: str, school: str, gpa: str) -> list:
         notes.append(f"서류 안에서 '{school}' 표기를 찾지 못했어요 — 학교명을 다시 확인해보세요.")
 
     gpa_str = str(gpa or "").strip()
-    if gpa_str:
+    if check_gpa and gpa_str:
         try:
             gpa_val = float(gpa_str)
             # 소수점 표기가 조금 다를 수 있어(3.85 vs 3.850 등) 정수부.소수1~2자리 정도로 느슨하게 찾는다.
