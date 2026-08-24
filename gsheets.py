@@ -411,6 +411,15 @@ def answer_question(qid: str, answer_text: str):
     ws.update_cell(row_idx, QNA_HEADERS.index("답변여부") + 1, "Y")
 
 
+def edit_question(qid: str, new_text: str):
+    """본인 확인(비밀번호)이 끝난 지원자가 자기 문의 내용을 고칠 때 사용."""
+    ws = _get_qna_worksheet()
+    cell = ws.find(str(qid), in_column=QNA_HEADERS.index("id") + 1)
+    if cell is None:
+        raise ValueError(f"문의 id {qid} 를 찾을 수 없습니다.")
+    ws.update_cell(cell.row, QNA_HEADERS.index("질문") + 1, new_text)
+
+
 def delete_question(qid: str):
     ws = _get_qna_worksheet()
     cell = ws.find(str(qid), in_column=QNA_HEADERS.index("id") + 1)

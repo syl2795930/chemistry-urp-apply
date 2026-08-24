@@ -7,6 +7,7 @@
 회차(SURF/WURF)가 바뀌면 이 파일이 아니라 config.py의 값들을 고치세요.
 """
 import re
+import html
 import base64
 import datetime
 from pathlib import Path
@@ -170,10 +171,48 @@ def page_faq():
             with st.expander(f"[{status}] {r.get('이름')} — {r.get('등록일시')}",
                               expanded=st.session_state.get(unlock_key, False)):
                 if not has_pw or st.session_state.get(unlock_key):
-                    st.write(r.get("질문", ""))
+                    b = config.BRAND
+                    q_text = html.escape(str(r.get("질문", ""))).replace("\n", "<br>")
+                    st.markdown(
+                        f'<div style="background:{b["page_bg"]};border-radius:8px;padding:10px 14px;'
+                        f'margin-bottom:8px;font-size:14px;line-height:1.6;">'
+                        f'<span style="font-weight:700;color:{b["primary_dark"]};">Q.</span> {q_text}'
+                        "</div>",
+                        unsafe_allow_html=True,
+                    )
                     if str(r.get("답변여부")) == "Y":
-                        st.markdown("**➡ 답변**")
-                        st.write(r.get("답변", ""))
+                        a_text = html.escape(str(r.get("답변", ""))).replace("\n", "<br>")
+                        st.markdown(
+                            f'<div style="background:#fff;border:1px solid {b["primary_light"]};'
+                            f'border-radius:8px;padding:10px 14px;font-size:14px;line-height:1.6;">'
+                            f'<span style="font-weight:700;color:{b["primary"]};">A.</span> {a_text}'
+                            "</div>",
+                            unsafe_allow_html=True,
+                        )
+                    if has_pw:
+                        edit_key = f"qna_editing_{qid}"
+                        st.write("")
+                        ec1, ec2 = st.columns(2)
+                        with ec1:
+                            if st.button("✏️ 수정", key=f"qna_edit_{qid}", use_container_width=True):
+                                st.session_state[edit_key] = True
+                        with ec2:
+                            if st.button("🗑 삭제", key=f"qna_del_{qid}", use_container_width=True):
+                                gsheets.delete_question(qid)
+                                st.session_state.pop(unlock_key, None)
+                                st.success("삭제되었습니다.")
+                                st.rerun()
+                        if st.session_state.get(edit_key):
+                            new_text = st.text_area("문의 내용 수정", value=str(r.get("질문", "")),
+                                                     height=120, key=f"qna_edit_text_{qid}")
+                            if st.button("저장", key=f"qna_edit_save_{qid}"):
+                                if new_text.strip():
+                                    gsheets.edit_question(qid, new_text.strip())
+                                    st.session_state.pop(edit_key, None)
+                                    st.success("수정되었습니다.")
+                                    st.rerun()
+                                else:
+                                    st.error("문의 내용을 입력해주세요.")
                 else:
                     st.caption("본인이 남긴 문의인 경우, 등록하신 비밀번호를 입력하면 내용을 볼 수 있어요.")
                     pw_try = st.text_input("비밀번호", type="password", key=f"pw_try_{qid}")
