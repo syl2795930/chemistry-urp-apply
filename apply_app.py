@@ -113,17 +113,25 @@ def page_faq():
     theme.faq_accordion(config.FAQ_ITEMS)
 
     st.markdown("**1:1 문의 게시판**")
+    # 제출할 때마다 위젯 key에 붙는 번호(q_form_gen)를 올려서, 그 다음부터는 완전히 새로운
+    # 위젯으로 취급되게 한다. (예전엔 session_state를 지우고 rerun만 했는데, 그래도 예전에
+    # 입력했던 내용이 남아있는 경우가 있었음 — 아예 새 위젯을 쓰는 쪽이 훨씬 확실하다.)
+    if "q_form_gen" not in st.session_state:
+        st.session_state["q_form_gen"] = 0
+    _gen = st.session_state["q_form_gen"]
+    _k_name, _k_setpw, _k_pw, _k_text = f"q_name_{_gen}", f"q_set_pw_{_gen}", f"q_pw_{_gen}", f"q_text_{_gen}"
+
     # 안에 뭔가 입력/체크된 상태면(이름/비밀번호설정/문의내용) 펼쳐진 채로 유지한다.
     # 안 그러면 체크박스 하나만 눌러도 재실행되면서 펼침이 기본값(닫힘)으로 되돌아가버린다.
-    _qna_open = bool(st.session_state.get("q_name")) or st.session_state.get("q_set_pw", False) \
-        or bool(st.session_state.get("q_text"))
+    _qna_open = bool(st.session_state.get(_k_name)) or st.session_state.get(_k_setpw, False) \
+        or bool(st.session_state.get(_k_text))
     with st.expander("문의 작성하기", expanded=_qna_open):
-        q_name = st.text_input("이름 *", key="q_name")
-        set_pw = st.checkbox("비밀번호를 설정하시겠어요? (선택, 나중에 본인 글만 확인할 때 사용)", key="q_set_pw")
-        q_pw = st.text_input("비밀번호", type="password", key="q_pw") if set_pw else ""
-        q_text = st.text_area("문의 내용 *", height=120, key="q_text")
+        q_name = st.text_input("이름 *", key=_k_name)
+        set_pw = st.checkbox("비밀번호를 설정하시겠어요? (선택, 나중에 본인 글만 확인할 때 사용)", key=_k_setpw)
+        q_pw = st.text_input("비밀번호", type="password", key=_k_pw) if set_pw else ""
+        q_text = st.text_area("문의 내용 *", height=120, key=_k_text)
 
-        if st.button("문의 등록", use_container_width=True, key="q_submit_btn"):
+        if st.button("문의 등록", use_container_width=True, key=f"q_submit_btn_{_gen}"):
             if not q_name.strip():
                 st.error("이름을 입력해주세요.")
             elif not q_text.strip():
@@ -139,10 +147,12 @@ def page_faq():
                     )
                 except Exception:
                     pass  # 알림 메일은 부가 기능이므로 실패해도 문의 등록 자체는 정상 처리
-                for k in ["q_name", "q_set_pw", "q_pw", "q_text"]:
-                    st.session_state.pop(k, None)
-                st.success("문의가 등록되었습니다.")
+                st.session_state["q_form_gen"] += 1  # 다음부터는 새 위젯이라 확실히 비워져 있음
+                st.session_state["q_submitted_ok"] = True
                 st.rerun()
+
+    if st.session_state.pop("q_submitted_ok", False):
+        st.success("문의가 등록되었습니다.")
 
     try:
         qdf = gsheets.read_all_questions()
