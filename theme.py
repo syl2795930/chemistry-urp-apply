@@ -534,12 +534,14 @@ def footer():
     b = config.BRAND
     dept = config.SITE_LINKS.get("dept", "")
     grad = config.SITE_LINKS.get("grad_admission", "")
+    contact = config.PROGRAM.get("contact", "")
     html = (
         f'<hr style="margin-top:36px;border-color:{b["primary_light"]};" />'
         '<div style="text-align:center;padding:18px 0 8px;">'
         f'<a href="{dept}" target="_blank" style="color:{b["primary_dark"]};font-weight:600;font-size:13px;text-decoration:none;margin-right:24px;">포항공과대학교 화학과 홈페이지 ↗</a>'
         f'<a href="{grad}" target="_blank" style="color:{b["primary_dark"]};font-weight:600;font-size:13px;text-decoration:none;">대학원 입학 홈페이지 ↗</a>'
-        '<div style="font-size:11px;color:#aaa;margin-top:10px;">© POSTECH Department of Chemistry</div>'
+        f'<div style="font-size:12px;color:#888;margin-top:12px;">문의: {contact}</div>'
+        '<div style="font-size:11px;color:#aaa;margin-top:6px;">© POSTECH Department of Chemistry</div>'
         '</div>'
     )
     _render(html)

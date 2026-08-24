@@ -455,3 +455,27 @@ def read_all_subscribers() -> pd.DataFrame:
             df[c] = ""
     return df[SUB_HEADERS]
 
+
+def send_notification_email(to_addr: str, subject: str, body: str):
+    """문의글이 새로 등록되면 관리자 이메일로 알려준다.
+    Gmail SMTP + 앱 비밀번호 방식을 쓴다 — 드라이브 업로드용 OAuth에 메일 발송 권한까지
+    새로 추가하면 다시 동의 화면을 거쳐야 해서, 완전히 독립적인 더 간단한 방식을 쓰는 것.
+    (secrets의 [smtp] sender_email / app_password 가 필요 — SETUP_GUIDE.md 참고)
+    설정이 없거나 실패하면 예외를 그대로 올린다 — 호출부에서 부가 기능으로 취급해 처리할 것."""
+    import smtplib
+    from email.mime.text import MIMEText
+
+    smtp_cfg = st.secrets.get("smtp", {})
+    sender = smtp_cfg.get("sender_email")
+    app_pw = smtp_cfg.get("app_password")
+    if not sender or not app_pw:
+        raise RuntimeError("SMTP 설정(secrets의 [smtp] 섹션)이 없습니다.")
+
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = sender
+    msg["To"] = to_addr
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(sender, app_pw)
+        server.sendmail(sender, [to_addr], msg.as_string())
+

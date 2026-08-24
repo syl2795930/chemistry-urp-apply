@@ -130,6 +130,15 @@ def page_faq():
                 st.error("문의 내용을 입력해주세요.")
             else:
                 gsheets.append_question(q_name.strip(), q_pw.strip(), q_text.strip())
+                try:
+                    gsheets.send_notification_email(
+                        CONTACT_INFO,
+                        f"[{config.PROGRAM['name']}] 새 문의 등록: {q_name.strip()}",
+                        f"이름: {q_name.strip()}\n\n문의 내용:\n{q_text.strip()}\n\n"
+                        "관리자 화면의 '문의(Q&A) 답변' 탭에서 답변해주세요.",
+                    )
+                except Exception:
+                    pass  # 알림 메일은 부가 기능이므로 실패해도 문의 등록 자체는 정상 처리
                 for k in ["q_name", "q_set_pw", "q_pw", "q_text"]:
                     st.session_state.pop(k, None)
                 st.success("문의가 등록되었습니다.")
