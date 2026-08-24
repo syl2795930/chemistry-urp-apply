@@ -184,11 +184,14 @@ def page_faq():
                         a_text = html.escape(str(r.get("답변", ""))).replace("\n", "<br>")
                         st.markdown(
                             f'<div style="background:#fff;border:1px solid {b["primary_light"]};'
-                            f'border-radius:8px;padding:10px 14px;font-size:14px;line-height:1.6;">'
+                            f'border-radius:8px;padding:10px 14px;margin-bottom:10px;'
+                            f'font-size:14px;line-height:1.6;">'
                             f'<span style="font-weight:700;color:{b["primary"]};">A.</span> {a_text}'
                             "</div>",
                             unsafe_allow_html=True,
                         )
+                    elif not has_pw:
+                        st.write("")
                     if has_pw:
                         edit_key = f"qna_editing_{qid}"
                         st.write("")
