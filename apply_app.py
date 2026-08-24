@@ -120,7 +120,13 @@ def _qna_write_dialog():
     _gen = st.session_state["q_form_gen"]
     _k_name, _k_setpw, _k_pw, _k_text = f"q_name_{_gen}", f"q_set_pw_{_gen}", f"q_pw_{_gen}", f"q_text_{_gen}"
     q_name = st.text_input("이름 *", key=_k_name)
-    set_pw = st.checkbox("비밀번호를 설정하시겠어요? (선택, 나중에 본인 글만 확인·수정·삭제할 때 사용)", key=_k_setpw)
+    set_pw = st.checkbox("비밀번호 설정하기 (선택)", key=_k_setpw)
+    if set_pw:
+        st.caption("여기서 정하신 비밀번호는, 나중에 이 게시판에서 본인이 쓴 글을 다시 열어보거나 "
+                   "고치거나 지울 때 본인 확인용으로 사용돼요.")
+    else:
+        st.caption("설정 안 하셔도 문의는 정상 등록돼요. 다만 나중에 이 글을 다시 열어보거나 "
+                   "고치거나 지우려면 비밀번호가 있어야 해요.")
     q_pw = st.text_input("비밀번호", type="password", key=_k_pw) if set_pw else ""
     q_text = st.text_area("문의 내용 *", height=140, key=_k_text)
     if st.button("문의 등록", use_container_width=True, type="primary", key=f"q_submit_btn_{_gen}"):
