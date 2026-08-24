@@ -179,16 +179,27 @@ def hero_with_cta(title: str, subtitle: str, cta_label: str, cta_key: str) -> bo
 
 
 def topbar(title: str = "POSTECH 화학과 연구참여 프로그램"):
-    """관리자 앱용 - 네비게이션 버튼 없이 로고+제목만."""
+    """관리자 앱용 - 네비게이션 버튼 없이 로고+제목만.
+    사이드바가 생기면서 이 헤더가 본문(사이드바 오른쪽)에만 걸쳐 보여 화면이 두 조각처럼
+    나뉘어 보이는 문제가 있었다. 이 헤더 안에는 클릭 가능한 요소가 하나도 없어서(로고+텍스트뿐),
+    화면 맨 위에 고정(position:fixed)시켜 사이드바까지 포함한 화면 전체 폭을 덮게 해도
+    클릭 가로채기 같은 부작용 위험이 없다. 그만큼 사이드바/본문 위쪽에 여백을 줘서 가리지 않게 한다."""
     b = config.BRAND
     html = (
-        '<div style="display:flex;align-items:center;gap:8px;padding:6px 0 14px;'
-        f'border-bottom:1px solid {b["primary_light"]};margin-bottom:14px;">'
-        f'<img src="data:image/png;base64,{MASCOT_B64}" style="height:34px;width:auto;" />'
+        '<div style="position:fixed;top:0;left:0;right:0;z-index:999;'
+        'display:flex;align-items:center;gap:8px;padding:10px 20px;'
+        f'background:#fff;border-bottom:1px solid {b["primary_light"]};">'
+        f'<img src="data:image/png;base64,{MASCOT_B64}" style="height:30px;width:auto;" />'
         f'<div style="font-weight:700;font-size:15px;color:{b["primary_dark"]};">{title}</div>'
         '</div>'
     )
     _render(html)
+    _render(
+        "<style>"
+        'section[data-testid="stSidebar"] > div:first-child { padding-top:58px !important; }'
+        ".block-container { padding-top:70px !important; }"
+        "</style>"
+    )
 
 
 NAV_ITEMS = [("home", "홈"), ("apply", "지원하기"), ("labs", "연구실"), ("faq", "FAQ")]
