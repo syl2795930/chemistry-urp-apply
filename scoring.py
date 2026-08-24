@@ -33,7 +33,7 @@ LABS = {
     ],
     "고분자화학": [
         {"name": "김원종", "lab": "의료용 고분자 연구실", "url": "http://bmpl.postech.ac.kr"},
-        {"name": "박문정", "lab": "에너지 나노재료 연구실", "url": "http://nsem.postech.ac.kr"},
+        {"name": "박문정", "lab": "에너지 나노재료 연구실", "url": "https://parkgroup.postech.ac.kr/Parkgroup/index.do"},
         {"name": "박수진", "lab": "고분자기반 에너지 소재 연구실", "url": "http://nfmspark.wixsite.com/nfmspark"},
     ],
     "생화학": [
