@@ -113,44 +113,49 @@ def page_faq():
 
     theme.faq_accordion(config.FAQ_ITEMS)
 
-    st.markdown("**1:1 문의 게시판**")
-    # 제출할 때마다 위젯 key에 붙는 번호(q_form_gen)를 올려서, 그 다음부터는 완전히 새로운
-    # 위젯으로 취급되게 한다. (예전엔 session_state를 지우고 rerun만 했는데, 그래도 예전에
-    # 입력했던 내용이 남아있는 경우가 있었음 — 아예 새 위젯을 쓰는 쪽이 훨씬 확실하다.)
+@st.dialog("문의 작성하기")
+def _qna_write_dialog():
     if "q_form_gen" not in st.session_state:
         st.session_state["q_form_gen"] = 0
     _gen = st.session_state["q_form_gen"]
     _k_name, _k_setpw, _k_pw, _k_text = f"q_name_{_gen}", f"q_set_pw_{_gen}", f"q_pw_{_gen}", f"q_text_{_gen}"
+    q_name = st.text_input("이름 *", key=_k_name)
+    set_pw = st.checkbox("비밀번호를 설정하시겠어요? (선택, 나중에 본인 글만 확인·수정·삭제할 때 사용)", key=_k_setpw)
+    q_pw = st.text_input("비밀번호", type="password", key=_k_pw) if set_pw else ""
+    q_text = st.text_area("문의 내용 *", height=140, key=_k_text)
+    if st.button("문의 등록", use_container_width=True, type="primary", key=f"q_submit_btn_{_gen}"):
+        if not q_name.strip():
+            st.error("이름을 입력해주세요.")
+        elif not q_text.strip():
+            st.error("문의 내용을 입력해주세요.")
+        else:
+            gsheets.append_question(q_name.strip(), q_pw.strip(), q_text.strip())
+            try:
+                gsheets.send_notification_email(
+                    CONTACT_INFO,
+                    f"[{config.PROGRAM['name']}] 새 문의 등록: {q_name.strip()}",
+                    f"이름: {q_name.strip()}\n\n문의 내용:\n{q_text.strip()}\n\n"
+                    "관리자 화면의 '문의(Q&A) 답변' 탭에서 답변해주세요.",
+                )
+            except Exception:
+                pass  # 알림 메일은 부가 기능이므로 실패해도 문의 등록 자체는 정상 처리
+            st.session_state["q_form_gen"] += 1  # 다음부터는 새 위젯이라 확실히 비워져 있음
+            st.session_state["q_submitted_ok"] = True
+            st.rerun()  # 다이얼로그 밖(전체 스크립트) 재실행 -> 팝업이 자동으로 닫힘
 
-    # 안에 뭔가 입력/체크된 상태면(이름/비밀번호설정/문의내용) 펼쳐진 채로 유지한다.
-    # 안 그러면 체크박스 하나만 눌러도 재실행되면서 펼침이 기본값(닫힘)으로 되돌아가버린다.
-    _qna_open = bool(st.session_state.get(_k_name)) or st.session_state.get(_k_setpw, False) \
-        or bool(st.session_state.get(_k_text))
-    with st.expander("문의 작성하기", expanded=_qna_open):
-        q_name = st.text_input("이름 *", key=_k_name)
-        set_pw = st.checkbox("비밀번호를 설정하시겠어요? (선택, 나중에 본인 글만 확인할 때 사용)", key=_k_setpw)
-        q_pw = st.text_input("비밀번호", type="password", key=_k_pw) if set_pw else ""
-        q_text = st.text_area("문의 내용 *", height=120, key=_k_text)
 
-        if st.button("문의 등록", use_container_width=True, key=f"q_submit_btn_{_gen}"):
-            if not q_name.strip():
-                st.error("이름을 입력해주세요.")
-            elif not q_text.strip():
-                st.error("문의 내용을 입력해주세요.")
-            else:
-                gsheets.append_question(q_name.strip(), q_pw.strip(), q_text.strip())
-                try:
-                    gsheets.send_notification_email(
-                        CONTACT_INFO,
-                        f"[{config.PROGRAM['name']}] 새 문의 등록: {q_name.strip()}",
-                        f"이름: {q_name.strip()}\n\n문의 내용:\n{q_text.strip()}\n\n"
-                        "관리자 화면의 '문의(Q&A) 답변' 탭에서 답변해주세요.",
-                    )
-                except Exception:
-                    pass  # 알림 메일은 부가 기능이므로 실패해도 문의 등록 자체는 정상 처리
-                st.session_state["q_form_gen"] += 1  # 다음부터는 새 위젯이라 확실히 비워져 있음
-                st.session_state["q_submitted_ok"] = True
-                st.rerun()
+def page_faq():
+    st.header("FAQ · Q&A")
+    st.caption("자주 묻는 질문과, 지원자분들이 남긴 문의를 한 페이지에서 확인하실 수 있어요.")
+
+    theme.faq_accordion(config.FAQ_ITEMS)
+
+    qc1, qc2 = st.columns([3, 1])
+    with qc1:
+        st.markdown("**1:1 문의 게시판**")
+    with qc2:
+        if st.button("✏️ 문의 작성하기", use_container_width=True):
+            _qna_write_dialog()
 
     if st.session_state.pop("q_submitted_ok", False):
         st.success("문의가 등록되었습니다.")
@@ -163,68 +168,75 @@ def page_faq():
     if qdf is None or qdf.empty:
         st.info("등록된 문의가 없습니다.")
     else:
+        b = config.BRAND
         for _, r in qdf.sort_values("등록일시", ascending=False).iterrows():
             qid = str(r.get("id"))
             has_pw = bool(str(r.get("비밀번호", "")).strip())
-            status = "✅ 답변완료" if str(r.get("답변여부")) == "Y" else "⏳ 답변대기"
+            answered = str(r.get("답변여부")) == "Y"
+            status = "답변완료" if answered else "답변대기"
+            accent = "#3FA34D" if answered else b["primary"]
             unlock_key = f"qna_unlocked_{qid}"
-            with st.expander(f"[{status}] {r.get('이름')} — {r.get('등록일시')}",
-                              expanded=st.session_state.get(unlock_key, False)):
-                if not has_pw or st.session_state.get(unlock_key):
-                    b = config.BRAND
-                    q_text = html.escape(str(r.get("질문", ""))).replace("\n", "<br>")
-                    st.markdown(
-                        f'<div style="background:{b["page_bg"]};border-radius:8px;padding:10px 14px;'
-                        f'margin-bottom:8px;font-size:14px;line-height:1.6;">'
-                        f'<span style="font-weight:700;color:{b["primary_dark"]};">Q.</span> {q_text}'
-                        "</div>",
-                        unsafe_allow_html=True,
-                    )
-                    if str(r.get("답변여부")) == "Y":
-                        a_text = html.escape(str(r.get("답변", ""))).replace("\n", "<br>")
+            with st.container(key=f"qna_row_{qid}"):
+                with st.expander(f"**{status}** · {r.get('이름')} — {r.get('등록일시')}",
+                                  expanded=st.session_state.get(unlock_key, False)):
+                    if not has_pw or st.session_state.get(unlock_key):
+                        q_text = html.escape(str(r.get("질문", ""))).replace("\n", "<br>")
                         st.markdown(
-                            f'<div style="background:#fff;border:1px solid {b["primary_light"]};'
-                            f'border-radius:8px;padding:10px 14px;margin-bottom:10px;'
-                            f'font-size:14px;line-height:1.6;">'
-                            f'<span style="font-weight:700;color:{b["primary"]};">A.</span> {a_text}'
+                            f'<div style="background:{b["page_bg"]};border-radius:8px;padding:10px 14px;'
+                            f'margin-bottom:8px;font-size:14px;line-height:1.6;">'
+                            f'<span style="font-weight:700;color:{b["primary_dark"]};">Q.</span> {q_text}'
                             "</div>",
                             unsafe_allow_html=True,
                         )
-                    elif not has_pw:
-                        st.write("")
-                    if has_pw:
-                        edit_key = f"qna_editing_{qid}"
-                        st.write("")
-                        ec1, ec2 = st.columns(2)
-                        with ec1:
-                            if st.button("✏️ 수정", key=f"qna_edit_{qid}", use_container_width=True):
-                                st.session_state[edit_key] = True
-                        with ec2:
-                            if st.button("🗑 삭제", key=f"qna_del_{qid}", use_container_width=True):
-                                gsheets.delete_question(qid)
-                                st.session_state.pop(unlock_key, None)
-                                st.success("삭제되었습니다.")
-                                st.rerun()
-                        if st.session_state.get(edit_key):
-                            new_text = st.text_area("문의 내용 수정", value=str(r.get("질문", "")),
-                                                     height=120, key=f"qna_edit_text_{qid}")
-                            if st.button("저장", key=f"qna_edit_save_{qid}"):
-                                if new_text.strip():
-                                    gsheets.edit_question(qid, new_text.strip())
-                                    st.session_state.pop(edit_key, None)
-                                    st.success("수정되었습니다.")
+                        if answered:
+                            a_text = html.escape(str(r.get("답변", ""))).replace("\n", "<br>")
+                            st.markdown(
+                                f'<div style="background:#fff;border:1px solid {b["primary_light"]};'
+                                f'border-radius:8px;padding:10px 14px;margin-bottom:10px;'
+                                f'font-size:14px;line-height:1.6;">'
+                                f'<span style="font-weight:700;color:{b["primary"]};">A.</span> {a_text}'
+                                "</div>",
+                                unsafe_allow_html=True,
+                            )
+                        elif not has_pw:
+                            st.write("")
+                        if has_pw:
+                            edit_key = f"qna_editing_{qid}"
+                            st.write("")
+                            ec1, ec2 = st.columns(2)
+                            with ec1:
+                                if st.button("✏️ 수정", key=f"qna_edit_{qid}", use_container_width=True):
+                                    st.session_state[edit_key] = True
+                            with ec2:
+                                if st.button("🗑 삭제", key=f"qna_del_{qid}", use_container_width=True):
+                                    gsheets.delete_question(qid)
+                                    st.session_state.pop(unlock_key, None)
+                                    st.success("삭제되었습니다.")
                                     st.rerun()
-                                else:
-                                    st.error("문의 내용을 입력해주세요.")
-                else:
-                    st.caption("본인이 남긴 문의인 경우, 등록하신 비밀번호를 입력하면 내용을 볼 수 있어요.")
-                    pw_try = st.text_input("비밀번호", type="password", key=f"pw_try_{qid}")
-                    if st.button("확인", key=f"pw_check_{qid}"):
-                        if pw_try == str(r.get("비밀번호", "")):
-                            st.session_state[unlock_key] = True
-                            st.rerun()
-                        else:
-                            st.error("비밀번호가 일치하지 않습니다.")
+                            if st.session_state.get(edit_key):
+                                new_text = st.text_area("문의 내용 수정", value=str(r.get("질문", "")),
+                                                         height=120, key=f"qna_edit_text_{qid}")
+                                if st.button("저장", key=f"qna_edit_save_{qid}"):
+                                    if new_text.strip():
+                                        gsheets.edit_question(qid, new_text.strip())
+                                        st.session_state.pop(edit_key, None)
+                                        st.success("수정되었습니다.")
+                                        st.rerun()
+                                    else:
+                                        st.error("문의 내용을 입력해주세요.")
+                    else:
+                        st.caption("본인이 남긴 문의인 경우, 등록하신 비밀번호를 입력하면 내용을 볼 수 있어요.")
+                        pw_try = st.text_input("비밀번호", type="password", key=f"pw_try_{qid}")
+                        if st.button("확인", key=f"pw_check_{qid}"):
+                            if pw_try == str(r.get("비밀번호", "")):
+                                st.session_state[unlock_key] = True
+                                st.rerun()
+                            else:
+                                st.error("비밀번호가 일치하지 않습니다.")
+            theme.inject_css(
+                f'.st-key-qna_row_{qid} {{ border-left:3px solid {accent}; border-radius:4px; '
+                "padding-left:4px; margin-bottom:6px; }"
+            )
 
 
 # ══════════════════════════ 지원하기 ══════════════════════════
