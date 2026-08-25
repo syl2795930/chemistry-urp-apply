@@ -186,7 +186,7 @@ def topbar(title: str = "POSTECH 화학과 연구참여 프로그램"):
     클릭 가로채기 같은 부작용 위험이 없다. 그만큼 사이드바/본문 위쪽에 여백을 줘서 가리지 않게 한다."""
     b = config.BRAND
     html = (
-        '<div style="position:fixed;top:0;left:0;right:0;z-index:999;'
+        '<div style="position:fixed;top:0;left:0;right:0;z-index:999999;'
         'display:flex;align-items:center;gap:8px;padding:10px 20px;'
         f'background:#fff;border-bottom:1px solid {b["primary_light"]};">'
         f'<img src="data:image/png;base64,{MASCOT_B64}" style="height:30px;width:auto;" />'
@@ -426,8 +426,11 @@ def prof_summary_table(counts1: dict, counts2: dict, state_key: str):
             "1지망": [int(counts1.get(p, 0)) for p in all_profs],
             "2지망": [int(counts2.get(p, 0)) for p in all_profs],
         })
+        # 기본 높이로 두면 교수님이 많을 때 표 안에서 또 스크롤이 생기므로,
+        # 행 수에 맞춰 높이를 계산해서 전부 한 번에 보이게 한다.
+        _tbl_height = 38 + 35 * len(all_profs) + 3
         event = st.dataframe(
-            tdf, use_container_width=True, hide_index=True,
+            tdf, use_container_width=True, hide_index=True, height=_tbl_height,
             on_select="rerun", selection_mode="single-row", key=f"prof_summary_{state_key}",
         )
         rows = (event or {}).get("selection", {}).get("rows", [])
