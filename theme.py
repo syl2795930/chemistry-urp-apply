@@ -408,14 +408,16 @@ def clickable_bar_chart(title: str, counts: dict, state_key: str):
     )
 
 
-def prof_summary_table(counts1: dict, counts2: dict, state_key: str):
+def prof_summary_table(counts1: dict, counts2: dict, state_key: str, all_profs_list: list = None):
     """표(st.dataframe)에 교수님별 1지망/2지망 인원을 숫자로만 보여준다 (진행바까지는
     과했다는 판단으로 뺐다). 체크박스는 표의 행 선택 기능에 기본으로 붙는 것이라 이 컴포넌트를
     쓰는 한 뺄 수 없다 — 완전히 없애려면 커스텀 버튼으로 가야 하는데, 그건 공간을 더 쓴다는
-    트레이드오프가 있어 이번엔 표 쪽으로 정리했다. 행을 누르면 그 교수님을 선택 상태로 저장한다."""
+    트레이드오프가 있어 이번엔 표 쪽으로 정리했다. 행을 누르면 그 교수님을 선택 상태로 저장한다.
+    all_profs_list를 주면, 아직 지원자가 0명인 교수님도 빠짐없이 목록에 나온다 (안 주면
+    지원자가 1명이라도 있는 교수님만 나온다)."""
     b = config.BRAND
-    all_profs = sorted(set(counts1) | set(counts2),
-                        key=lambda p: -(counts1.get(p, 0) + counts2.get(p, 0)))
+    base = all_profs_list if all_profs_list is not None else list(set(counts1) | set(counts2))
+    all_profs = sorted(base, key=lambda p: -(counts1.get(p, 0) + counts2.get(p, 0)))
     if not all_profs:
         st.caption("데이터가 없어요.")
         return
@@ -503,11 +505,11 @@ def quick_filter_card(label: str, value: str, note: str, key: str, active: bool)
         'div[class*="st-key-qfc_"] button[kind="secondary"] {'
         f'background:#fff !important; border:1px solid {b["primary_light"]} !important; }}'
         'div[class*="st-key-qfc_"] button div[data-testid="stMarkdownContainer"] > p:nth-of-type(1) {'
-        f'font-size:22px !important; font-weight:700 !important; margin:0 0 2px 0 !important; color:{b["primary_dark"]} !important; }}'
+        f'font-size:20px !important; font-weight:700 !important; margin:0 0 2px 0 !important; color:{b["primary_dark"]} !important; }}'
         'div[class*="st-key-qfc_"] button[kind="secondary"] div[data-testid="stMarkdownContainer"] > p:nth-of-type(1) {'
         "color:#222 !important; }"
         'div[class*="st-key-qfc_"] button div[data-testid="stMarkdownContainer"] > p:nth-of-type(2) {'
-        "font-size:12px !important; font-weight:600 !important; margin:0 !important; color:#666 !important; }"
+        "font-size:11px !important; font-weight:600 !important; margin:0 !important; color:#666 !important; }"
         'div[class*="st-key-qfc_"] button[kind="primary"] div[data-testid="stMarkdownContainer"] > p:nth-of-type(2) {'
         "color:#fff !important; }"
         'div[class*="st-key-qfc_"] button div[data-testid="stMarkdownContainer"] > p:nth-of-type(3) {'
