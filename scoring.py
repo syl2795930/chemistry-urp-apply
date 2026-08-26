@@ -187,3 +187,34 @@ def check_document_text(ocr_text: str, school: str, gpa: str, check_gpa: bool = 
         except ValueError:
             pass
     return notes
+
+
+def check_documents_combined(texts_by_label: dict, school: str, gpa: str) -> list:
+    """성적증명서·재학증명서 등 여러 서류의 OCR 텍스트를 한꺼번에 놓고 검사한다.
+    학교명은 어느 서류에든 한 군데라도 있으면 통과로 보고(성적증명서에만 있거나
+    재학증명서에만 있어도 문제로 안 잡는다), 평점은 texts_by_label의 '성적증명서'
+    항목에서만 확인한다. texts_by_label 예: {'성적증명서': '...', '재학증명서': '...'}
+    (성적증명서가 여러 장이면 미리 합쳐서 한 문자열로 넣으면 된다)."""
+    notes = []
+    all_text = "\n".join(t for t in texts_by_label.values() if t)
+    all_failed = all((not t) or str(t).startswith("[인식 실패") for t in texts_by_label.values())
+    if not all_text.strip() or all_failed:
+        notes.append("서류에서 글자를 인식하지 못했어요 (사진이 흐리거나 형식이 특이할 수 있어요).")
+        return notes
+
+    norm_all = re.sub(r"\s+", "", all_text)
+    school_key = re.sub(r"\s+", "", str(school or "").replace("대학교", "").replace("대학", ""))
+    if school_key and school_key not in norm_all:
+        notes.append(f"제출하신 서류들에서 '{school}' 표기를 찾지 못했어요 — 학교명을 다시 확인해보세요.")
+
+    gpa_str = str(gpa or "").strip()
+    transcript_text = str(texts_by_label.get("성적증명서", ""))
+    if gpa_str and transcript_text:
+        try:
+            gpa_val = float(gpa_str)
+            candidates = {f"{gpa_val:.1f}", f"{gpa_val:.2f}", gpa_str}
+            if not any(c in transcript_text for c in candidates):
+                notes.append(f"성적증명서에서 입력하신 평점 '{gpa_str}'과 일치하는 숫자를 찾지 못했어요.")
+        except ValueError:
+            pass
+    return notes

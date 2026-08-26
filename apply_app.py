@@ -262,32 +262,32 @@ def page_apply():
         return
 
     with st.container(key="apply_box"):
-        st.subheader("1. 기본 정보")
-        r1c1, r1c2 = st.columns(2)
-        with r1c1:
-            name_kr = st.text_input("성명 (한글) *", placeholder="예) 홍길동", key="f_name_kr")
-        with r1c2:
-            name_en = st.text_input("성명 (영문) *", placeholder="예) Hong, Gil-Dong", key="f_name_en")
-
-        r2c1, r2c2 = st.columns(2)
-        with r2c1:
-            birth = st.text_input("생년월일 *", placeholder="예) 2002.01.01", key="f_birth")
-            if birth.strip() and not _is_valid_birth(birth):
-                theme.inline_error("생년월일 형식이 올바르지 않습니다. 예) 2002.01.01")
-        with r2c2:
-            email = st.text_input("이메일 *", placeholder="예) example@school.ac.kr", key="f_email")
-            if email.strip() and not _is_valid_email(email):
-                theme.inline_error("이메일 형식이 올바르지 않습니다.")
-
-        r3c1, r3c2 = st.columns(2)
-        with r3c1:
-            gender = st.selectbox("성별 *", ["남", "여"], index=None, placeholder="선택하세요", key="f_gender")
-        with r3c2:
-            phone = st.text_input("휴대폰번호 *", placeholder="예) 010-1234-5678", key="f_phone")
-            if phone.strip() and not _is_valid_phone(phone):
-                theme.inline_error("휴대폰번호 형식이 올바르지 않습니다. 예) 010-1234-5678")
-
         with st.form("apply_form", clear_on_submit=False, border=False):
+            st.subheader("1. 기본 정보")
+            r1c1, r1c2 = st.columns(2)
+            with r1c1:
+                name_kr = st.text_input("성명 (한글) *", placeholder="예) 홍길동", key="f_name_kr")
+            with r1c2:
+                name_en = st.text_input("성명 (영문) *", placeholder="예) Hong, Gil-Dong", key="f_name_en")
+
+            r2c1, r2c2 = st.columns(2)
+            with r2c1:
+                birth = st.text_input("생년월일 *", placeholder="예) 2002.01.01", key="f_birth")
+                if birth.strip() and not _is_valid_birth(birth):
+                    theme.inline_error("생년월일 형식이 올바르지 않습니다. 예) 2002.01.01")
+            with r2c2:
+                email = st.text_input("이메일 *", placeholder="예) example@school.ac.kr", key="f_email")
+                if email.strip() and not _is_valid_email(email):
+                    theme.inline_error("이메일 형식이 올바르지 않습니다.")
+
+            r3c1, r3c2 = st.columns(2)
+            with r3c1:
+                gender = st.selectbox("성별 *", ["남", "여"], index=None, placeholder="선택하세요", key="f_gender")
+            with r3c2:
+                phone = st.text_input("휴대폰번호 *", placeholder="예) 010-1234-5678", key="f_phone")
+                if phone.strip() and not _is_valid_phone(phone):
+                    theme.inline_error("휴대폰번호 형식이 올바르지 않습니다. 예) 010-1234-5678")
+
             st.subheader("2. 희망 지도교수")
             c3, c4 = st.columns(2)
             with c3:
@@ -318,17 +318,20 @@ def page_apply():
                 gpa = st.text_input("평점 *", placeholder="예) 3.953")
 
             with st.expander("편입생인 경우에만 입력"):
-                c11, c12, c13 = st.columns(3)
-                with c11:
+                tc1, tc2, tc3 = st.columns(3)
+                with tc1:
                     t_school = st.text_input("전적 학사 학교명", placeholder="예) 포항공과대학교")
-                    t_scale = st.selectbox("전적 기준평점(만점)", ["", "4.5 만점", "4.3 만점"])
-                with c12:
+                with tc2:
                     t_major = st.text_input("전적 학사 전공명", placeholder="예) 화학과")
-                    t_gpa = st.text_input("전적 평점", placeholder="예) 3.953")
-                with c13:
+                with tc3:
                     t_admit_ym = st.text_input("전적 학교 입학 연월", placeholder="예) 2022-03")
                     if t_admit_ym.strip() and not _is_valid_ym(t_admit_ym):
                         theme.inline_error("입학 연월 형식이 올바르지 않습니다. 예) 2022-03")
+                tc4, tc5 = st.columns(2)
+                with tc4:
+                    t_scale = st.selectbox("전적 기준평점(만점)", ["", "4.5 만점", "4.3 만점"])
+                with tc5:
+                    t_gpa = st.text_input("전적 평점", placeholder="예) 3.953")
 
             st.subheader("4. 관심분야 및 지원동기")
             st.markdown("관심분야 *")
@@ -352,7 +355,9 @@ def page_apply():
             st.subheader("5. 서류 제출")
             c16, c17 = st.columns(2)
             with c16:
-                f_transcript = st.file_uploader("성적증명서 (PDF) *", type=["pdf"])
+                f_transcript = st.file_uploader(
+                    "성적증명서 (PDF) * — 편입생은 전적학교 성적증명서도 함께 올려주세요",
+                    type=["pdf"], accept_multiple_files=True)
                 f_enrollment = st.file_uploader("재학증명서 (PDF, 최근 1개월 이내 발급) *", type=["pdf"])
             with c17:
                 f_etc_list = st.file_uploader(
@@ -410,7 +415,7 @@ def page_apply():
         required_missing.append("관심분야")
     if consent_required != "예":
         required_missing.append("개인정보 수집·이용 동의(필수) - '예' 선택 필요")
-    if f_transcript is None:
+    if not f_transcript:
         required_missing.append("성적증명서 파일")
     if f_enrollment is None:
         required_missing.append("재학증명서 파일")
@@ -472,27 +477,33 @@ def page_apply():
         }
 
         # 파일 업로드 (구글드라이브)
-        transcript_bytes = _read_bytes(f_transcript)
+        transcript_bytes_list = [_read_bytes(f) for f in f_transcript]
         enrollment_bytes = _read_bytes(f_enrollment)
         photo_bytes = _read_bytes(f_photo)
 
-        row["성적증명서_링크"] = gsheets.upload_applicant_file(
-            round_name, folder_key, f"성적증명서{Path(f_transcript.name).suffix}", transcript_bytes, _mime_of(f_transcript))
+        transcript_links = []
+        for i, f_t in enumerate(f_transcript, start=1):
+            tb = transcript_bytes_list[i - 1]
+            name = f"성적증명서{i}{Path(f_t.name).suffix}" if len(f_transcript) > 1 \
+                else f"성적증명서{Path(f_t.name).suffix}"
+            link = gsheets.upload_applicant_file(round_name, folder_key, name, tb, _mime_of(f_t))
+            transcript_links.append(link)
+        row["성적증명서_링크"] = "\n".join(transcript_links)
         row["재학증명서_링크"] = gsheets.upload_applicant_file(
             round_name, folder_key, f"재학증명서{Path(f_enrollment.name).suffix}", enrollment_bytes, _mime_of(f_enrollment))
 
         # 제출과 동시에 AI로 서류(성적증명서·재학증명서)를 확인해서 결과를 저장해둔다.
         # (관리자가 나중에 한 명씩 눌러서 확인할 필요 없이, 확인이 필요한 사람만 바로 걸러낼 수 있게)
+        # 학교명은 성적증명서·재학증명서 중 어디에든 있으면 되도록, 텍스트를 합쳐서 한 번에 검사한다
+        # (편입생처럼 성적증명서가 여러 장이면 그것도 다 합친다).
         doc_notes = []
         doc_check_failed = False
         try:
-            for label, fbytes, fname, do_gpa in [
-                ("성적증명서", transcript_bytes, f_transcript.name, True),
-                ("재학증명서", enrollment_bytes, f_enrollment.name, False),
-            ]:
-                text = gsheets.ocr_document_text(fbytes, fname)
-                for n in scoring.check_document_text(text, school, gpa, check_gpa=do_gpa):
-                    doc_notes.append(f"[{label}] {n}")
+            transcript_text = "\n".join(
+                gsheets.ocr_document_text(tb, f_t.name) for tb, f_t in zip(transcript_bytes_list, f_transcript))
+            enrollment_text = gsheets.ocr_document_text(enrollment_bytes, f_enrollment.name)
+            doc_notes = scoring.check_documents_combined(
+                {"성적증명서": transcript_text, "재학증명서": enrollment_text}, school, gpa)
         except Exception:
             # AI 확인은 부가 기능이므로, 실패해도 접수 자체는 정상 진행한다.
             # 다만 "검사했는데 문제없음"과 "애초에 검사가 안 됨(예: 결제 미설정)"은 구분해서
@@ -533,7 +544,7 @@ def page_apply():
         if admin_pdf:
             try:
                 merged_pdf = pdf_gen.merge_pdfs(
-                    [admin_pdf, transcript_bytes, enrollment_bytes] + etc_bytes_list)
+                    [admin_pdf] + transcript_bytes_list + [enrollment_bytes] + etc_bytes_list)
                 gsheets.upload_applicant_file(
                     round_name, folder_key, "지원서_전체(병합본).pdf", merged_pdf, "application/pdf")
             except Exception:
