@@ -441,114 +441,122 @@ def page_apply():
         return
 
     with st.spinner("제출 처리 중입니다... (파일 업로드에 시간이 걸릴 수 있어요)"):
-        # 회차별 상위 폴더 (예: "2026_SURF") - 구글드라이브 안에서 회차별로 자동으로 나뉩니다.
-        round_name = config.PROGRAM["round_key"]
-
-        def _short_prof(p):
-            return str(p).split(" 교수님")[0].strip()
-
-        # 지원자 폴더명: "이름_1.교수님_2.교수님" + 동명이인 방지용 짧은 시각 태그
-        folder_key = (f"{name_kr}_1.{_short_prof(prof1)}_2.{_short_prof(prof2)}"
-                      f"_{gsheets.now_kst().strftime('%H%M%S')}")
-
-        group, score43, grade = scoring.compute_score(school, scale, gpa)
-        doc_pass = "합격" if scoring.is_document_pass(grade) else "미달"
-
-        t_group = t_score43 = t_grade = ""
-        if t_school.strip():
-            t_group, t_score43, t_grade = scoring.compute_score(t_school, t_scale, t_gpa)
-
-        now = gsheets.now_kst().strftime("%Y-%m-%d %H:%M:%S")
-        row = {
-            "접수번호": "", "제출일시": now, "프로그램구분": config.PROGRAM["round_key"],
-            "성명_한글": name_kr, "성명_영문": name_en, "생년월일": birth, "성별": gender,
-            "휴대폰번호": phone, "이메일": email,
-            "희망지도교수_1지망": prof1, "희망지도교수_2지망": prof2,
-            "학교명": school, "전공명": major, "입학연월": admit_ym, "학년학기": semester,
-            "만점기준": scale, "평점": gpa,
-            "편입_전적학교": t_school, "편입_전공": t_major, "편입_입학연월": t_admit_ym,
-            "편입_만점기준": t_scale, "편입_평점": t_gpa,
-            "대학군": group, "4.3환산": score43, "환산성적": grade,
-            "관심분야": ", ".join(interests), "대학원진학희망": grad_wish, "희망과정": grad_wish,
-            "기숙사사용": dorm, "지원동기": motivation,
-            "개인정보_필수": consent_required, "개인정보_선택": "",
-            "서류합격여부": doc_pass, "1지망선발여부": "", "비고": "",
-            "편입_대학군": t_group, "편입_4.3환산": t_score43, "편입_환산성적": t_grade,
-        }
-
-        # 파일 업로드 (구글드라이브)
-        transcript_bytes_list = [_read_bytes(f) for f in f_transcript]
-        enrollment_bytes = _read_bytes(f_enrollment)
-        photo_bytes = _read_bytes(f_photo)
-
-        transcript_links = []
-        for i, f_t in enumerate(f_transcript, start=1):
-            tb = transcript_bytes_list[i - 1]
-            name = f"성적증명서{i}{Path(f_t.name).suffix}" if len(f_transcript) > 1 \
-                else f"성적증명서{Path(f_t.name).suffix}"
-            link = gsheets.upload_applicant_file(round_name, folder_key, name, tb, _mime_of(f_t))
-            transcript_links.append(link)
-        row["성적증명서_링크"] = "\n".join(transcript_links)
-        row["재학증명서_링크"] = gsheets.upload_applicant_file(
-            round_name, folder_key, f"재학증명서{Path(f_enrollment.name).suffix}", enrollment_bytes, _mime_of(f_enrollment))
-
-        # 제출과 동시에 AI로 서류(성적증명서·재학증명서)를 확인해서 결과를 저장해둔다.
-        # (관리자가 나중에 한 명씩 눌러서 확인할 필요 없이, 확인이 필요한 사람만 바로 걸러낼 수 있게)
-        # 학교명은 성적증명서·재학증명서 중 어디에든 있으면 되도록, 텍스트를 합쳐서 한 번에 검사한다
-        # (편입생처럼 성적증명서가 여러 장이면 그것도 다 합친다).
-        doc_notes = []
-        doc_check_failed = False
         try:
-            transcript_text = "\n".join(
-                gsheets.ocr_document_text(tb, f_t.name) for tb, f_t in zip(transcript_bytes_list, f_transcript))
-            enrollment_text = gsheets.ocr_document_text(enrollment_bytes, f_enrollment.name)
-            doc_notes = scoring.check_documents_combined(
-                {"성적증명서": transcript_text, "재학증명서": enrollment_text}, school, gpa)
-        except Exception:
-            # AI 확인은 부가 기능이므로, 실패해도 접수 자체는 정상 진행한다.
-            # 다만 "검사했는데 문제없음"과 "애초에 검사가 안 됨(예: 결제 미설정)"은 구분해서
-            # 저장한다 — 안 그러면 관리자 화면에서 둘 다 '확인완료'로 보여서 놓치기 쉽다.
-            doc_check_failed = True
-        if doc_check_failed:
-            row["서류확인_AI"] = "미확인(검사 실패)"
-        else:
-            row["서류확인_AI"] = " / ".join(doc_notes) if doc_notes else "확인완료"
+            # 회차별 상위 폴더 (예: "2026_SURF") - 구글드라이브 안에서 회차별로 자동으로 나뉩니다.
+            round_name = config.PROGRAM["round_key"]
 
-        etc_links = []
-        etc_bytes_list = []
-        for i, f_etc in enumerate(f_etc_list or [], start=1):
-            eb = _read_bytes(f_etc)
-            etc_bytes_list.append(eb)
-            link = gsheets.upload_applicant_file(
-                round_name, folder_key, f"기타증빙_{i}{Path(f_etc.name).suffix}", eb, _mime_of(f_etc))
-            etc_links.append(link)
-        row["기타자료_링크"] = "\n".join(etc_links)
+            def _short_prof(p):
+                return str(p).split(" 교수님")[0].strip()
 
-        row["증명사진_링크"] = gsheets.upload_applicant_file(
-            round_name, folder_key, f"증명사진{Path(f_photo.name).suffix}", photo_bytes, _mime_of(f_photo))
+            # 지원자 폴더명: "이름_1.교수님_2.교수님" + 동명이인 방지용 짧은 시각 태그
+            folder_key = (f"{name_kr}_1.{_short_prof(prof1)}_2.{_short_prof(prof2)}"
+                          f"_{gsheets.now_kst().strftime('%H%M%S')}")
 
-        receipt_no = gsheets.append_applicant(row)
-        row["접수번호"] = receipt_no
+            group, score43, grade = scoring.compute_score(school, scale, gpa)
+            doc_pass = "합격" if scoring.is_document_pass(grade) else "미달"
 
-        try:
-            # 관리자 보관용(구글드라이브 병합본)에는 접수번호를 남기고,
-            admin_pdf = pdf_gen.generate_application_pdf(row, photo_bytes=photo_bytes, show_receipt_no=True)
-            # 학생이 화면에서 바로 보는 PDF에는 접수번호를 빼서 몇 번째 지원자인지 유추할 수 없게 한다.
-            student_pdf = pdf_gen.generate_application_pdf(row, photo_bytes=photo_bytes, show_receipt_no=False)
-        except Exception:
-            admin_pdf = None
-            student_pdf = None
+            t_group = t_score43 = t_grade = ""
+            if t_school.strip():
+                t_group, t_score43, t_grade = scoring.compute_score(t_school, t_scale, t_gpa)
 
-        # 표지 + 성적증명서 + 재학증명서 + 기타증빙을 하나로 병합해서 드라이브에도 저장
-        # (관리자님이 매번 화면에서 따로 생성 안 해도, 폴더에서 바로 받을 수 있게)
-        if admin_pdf:
+            now = gsheets.now_kst().strftime("%Y-%m-%d %H:%M:%S")
+            row = {
+                "접수번호": "", "제출일시": now, "프로그램구분": config.PROGRAM["round_key"],
+                "성명_한글": name_kr, "성명_영문": name_en, "생년월일": birth, "성별": gender,
+                "휴대폰번호": phone, "이메일": email,
+                "희망지도교수_1지망": prof1, "희망지도교수_2지망": prof2,
+                "학교명": school, "전공명": major, "입학연월": admit_ym, "학년학기": semester,
+                "만점기준": scale, "평점": gpa,
+                "편입_전적학교": t_school, "편입_전공": t_major, "편입_입학연월": t_admit_ym,
+                "편입_만점기준": t_scale, "편입_평점": t_gpa,
+                "대학군": group, "4.3환산": score43, "환산성적": grade,
+                "관심분야": ", ".join(interests), "대학원진학희망": grad_wish, "희망과정": grad_wish,
+                "기숙사사용": dorm, "지원동기": motivation,
+                "개인정보_필수": consent_required, "개인정보_선택": "",
+                "서류합격여부": doc_pass, "1지망선발여부": "", "비고": "",
+                "편입_대학군": t_group, "편입_4.3환산": t_score43, "편입_환산성적": t_grade,
+            }
+
+            # 파일 업로드 (구글드라이브)
+            transcript_bytes_list = [_read_bytes(f) for f in f_transcript]
+            enrollment_bytes = _read_bytes(f_enrollment)
+            photo_bytes = _read_bytes(f_photo)
+
+            transcript_links = []
+            for i, f_t in enumerate(f_transcript, start=1):
+                tb = transcript_bytes_list[i - 1]
+                name = f"성적증명서{i}{Path(f_t.name).suffix}" if len(f_transcript) > 1 \
+                    else f"성적증명서{Path(f_t.name).suffix}"
+                link = gsheets.upload_applicant_file(round_name, folder_key, name, tb, _mime_of(f_t))
+                transcript_links.append(link)
+            row["성적증명서_링크"] = "\n".join(transcript_links)
+            row["재학증명서_링크"] = gsheets.upload_applicant_file(
+                round_name, folder_key, f"재학증명서{Path(f_enrollment.name).suffix}", enrollment_bytes, _mime_of(f_enrollment))
+
+            # 제출과 동시에 AI로 서류(성적증명서·재학증명서)를 확인해서 결과를 저장해둔다.
+            # (관리자가 나중에 한 명씩 눌러서 확인할 필요 없이, 확인이 필요한 사람만 바로 걸러낼 수 있게)
+            # 학교명은 성적증명서·재학증명서 중 어디에든 있으면 되도록, 텍스트를 합쳐서 한 번에 검사한다
+            # (편입생처럼 성적증명서가 여러 장이면 그것도 다 합친다).
+            doc_notes = []
+            doc_check_failed = False
             try:
-                merged_pdf = pdf_gen.merge_pdfs(
-                    [admin_pdf] + transcript_bytes_list + [enrollment_bytes] + etc_bytes_list)
-                gsheets.upload_applicant_file(
-                    round_name, folder_key, "지원서_전체(병합본).pdf", merged_pdf, "application/pdf")
+                transcript_text = "\n".join(
+                    gsheets.ocr_document_text(tb, f_t.name) for tb, f_t in zip(transcript_bytes_list, f_transcript))
+                enrollment_text = gsheets.ocr_document_text(enrollment_bytes, f_enrollment.name)
+                doc_notes = scoring.check_documents_combined(
+                    {"성적증명서": transcript_text, "재학증명서": enrollment_text}, school, gpa)
             except Exception:
-                pass
+                # AI 확인은 부가 기능이므로, 실패해도 접수 자체는 정상 진행한다.
+                # 다만 "검사했는데 문제없음"과 "애초에 검사가 안 됨(예: 결제 미설정)"은 구분해서
+                # 저장한다 — 안 그러면 관리자 화면에서 둘 다 '확인완료'로 보여서 놓치기 쉽다.
+                doc_check_failed = True
+            if doc_check_failed:
+                row["서류확인_AI"] = "미확인(검사 실패)"
+            else:
+                row["서류확인_AI"] = " / ".join(doc_notes) if doc_notes else "확인완료"
+
+            etc_links = []
+            etc_bytes_list = []
+            for i, f_etc in enumerate(f_etc_list or [], start=1):
+                eb = _read_bytes(f_etc)
+                etc_bytes_list.append(eb)
+                link = gsheets.upload_applicant_file(
+                    round_name, folder_key, f"기타증빙_{i}{Path(f_etc.name).suffix}", eb, _mime_of(f_etc))
+                etc_links.append(link)
+            row["기타자료_링크"] = "\n".join(etc_links)
+
+            row["증명사진_링크"] = gsheets.upload_applicant_file(
+                round_name, folder_key, f"증명사진{Path(f_photo.name).suffix}", photo_bytes, _mime_of(f_photo))
+
+            receipt_no = gsheets.append_applicant(row)
+            row["접수번호"] = receipt_no
+
+            try:
+                # 관리자 보관용(구글드라이브 병합본)에는 접수번호를 남기고,
+                admin_pdf = pdf_gen.generate_application_pdf(row, photo_bytes=photo_bytes, show_receipt_no=True)
+                # 학생이 화면에서 바로 보는 PDF에는 접수번호를 빼서 몇 번째 지원자인지 유추할 수 없게 한다.
+                student_pdf = pdf_gen.generate_application_pdf(row, photo_bytes=photo_bytes, show_receipt_no=False)
+            except Exception:
+                admin_pdf = None
+                student_pdf = None
+
+            # 표지 + 성적증명서 + 재학증명서 + 기타증빙을 하나로 병합해서 드라이브에도 저장
+            # (관리자님이 매번 화면에서 따로 생성 안 해도, 폴더에서 바로 받을 수 있게)
+            if admin_pdf:
+                try:
+                    merged_pdf = pdf_gen.merge_pdfs(
+                        [admin_pdf] + transcript_bytes_list + [enrollment_bytes] + etc_bytes_list)
+                    gsheets.upload_applicant_file(
+                        round_name, folder_key, "지원서_전체(병합본).pdf", merged_pdf, "application/pdf")
+                except Exception:
+                    pass
+        except Exception as e:
+            st.error(
+                "제출 처리 중 오류가 발생했습니다. 입력하신 내용은 유지되니 잠시 후 다시 [지원서 제출] "
+                "버튼을 눌러 다시 시도해주세요. 계속 오류가 발생하면 담당자(신유리, syuri@postech.ac.kr, "
+                "054-279-5930)에게 문의해주시기 바랍니다."
+            )
+            return
 
     st.session_state["submitted_ok"] = True
     st.session_state["submitted_pdf"] = student_pdf
