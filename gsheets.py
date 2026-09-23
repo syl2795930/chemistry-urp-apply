@@ -78,6 +78,7 @@ HEADERS = [
     "서류합격여부", "1지망선발여부", "비고",
     "편입_대학군", "편입_4.3환산", "편입_환산성적",  # 기존 행들의 열 위치가 밀리지 않도록 맨 끝에 추가
     "서류확인_AI",
+    "영어성적",  # 마찬가지로 기존 행 열 위치 유지를 위해 맨 끝에 추가
 ]
 
 
@@ -238,19 +239,34 @@ def update_fields(receipt_no: str, updates: dict):
 
 # ── 구글드라이브 파일 저장 ──────────────────────────────────────────
 
+def _with_retry(func, tries: int = 3):
+    """구글 API 호출 중 가끔 생기는 일시적 네트워크 끊김(BrokenPipeError 등)을 흡수한다.
+    잠깐 쉬었다가 최대 tries번까지 자동으로 다시 시도. 다운로드뿐 아니라 폴더 생성/파일
+    업로드 쪽에서도 같은 종류의 오류가 나서, 아예 공용 함수로 뺐다."""
+    import time
+    last_err = None
+    for attempt in range(tries):
+        try:
+            return func()
+        except (BrokenPipeError, ConnectionError, OSError) as e:
+            last_err = e
+            time.sleep(1.5 * (attempt + 1))
+    raise last_err
+
+
 def _find_or_create_subfolder(name: str, parent_id: str) -> str:
     drive = _get_drive()
     q = (f"name = '{name}' and mimeType = 'application/vnd.google-apps.folder' "
          f"and '{parent_id}' in parents and trashed = false")
-    res = drive.files().list(
+    res = _with_retry(lambda: drive.files().list(
         q=q, fields="files(id, name)",
         supportsAllDrives=True, includeItemsFromAllDrives=True, corpora="allDrives"
-    ).execute()
+    ).execute())
     files = res.get("files", [])
     if files:
         return files[0]["id"]
     meta = {"name": name, "mimeType": "application/vnd.google-apps.folder", "parents": [parent_id]}
-    folder = drive.files().create(body=meta, fields="id", supportsAllDrives=True).execute()
+    folder = _with_retry(lambda: drive.files().create(body=meta, fields="id", supportsAllDrives=True).execute())
     return folder["id"]
 
 
@@ -263,7 +279,8 @@ def upload_applicant_file(round_name: str, applicant_folder_name: str, filename:
     folder_id = _find_or_create_subfolder(applicant_folder_name, round_id)
     media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=mimetype, resumable=False)
     meta = {"name": filename, "parents": [folder_id]}
-    f = drive.files().create(body=meta, media_body=media, fields="id, webViewLink", supportsAllDrives=True).execute()
+    f = _with_retry(lambda: drive.files().create(
+        body=meta, media_body=media, fields="id, webViewLink", supportsAllDrives=True).execute())
     return f.get("webViewLink", "")
 
 

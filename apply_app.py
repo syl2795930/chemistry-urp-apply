@@ -333,6 +333,32 @@ def page_apply():
                 with tc5:
                     t_gpa = st.text_input("전적 평점", placeholder="예) 3.953")
 
+            # 영어 성적 — 시험 종류를 고르게 하고, 점수/등급은 시험마다 체계가 달라(TOEFL은 점수,
+            # OPIc은 등급 등) 자유 텍스트로 받는다. "없음"을 고르면 점수 입력 없이 넘어갈 수 있다.
+            st.markdown("영어 성적 *")
+            ec1, ec2 = st.columns(2)
+            with ec1:
+                eng_test = st.selectbox(
+                    "시험 종류", ["TOEFL iBT", "IELTS", "TOEIC", "TOEIC Speaking", "OPIc", "TEPS",
+                               "기타(직접 입력)", "없음"],
+                    index=None, placeholder="선택하세요", label_visibility="collapsed")
+            with ec2:
+                if eng_test == "기타(직접 입력)":
+                    eng_test_custom = st.text_input("시험명", placeholder="시험명을 입력하세요",
+                                                      label_visibility="collapsed")
+                    eng_test_name = eng_test_custom
+                elif eng_test == "없음" or eng_test is None:
+                    eng_test_custom = ""
+                    eng_test_name = eng_test or ""
+                else:
+                    eng_test_custom = ""
+                    eng_test_name = eng_test
+                eng_score = "" if eng_test in (None, "없음") else st.text_input(
+                    "점수/등급", placeholder="예) 102, 7.0, IH 등 점수 또는 등급",
+                    label_visibility="collapsed")
+            english_score = "없음" if eng_test == "없음" else (
+                f"{eng_test_name}: {eng_score}".strip(": ") if eng_test_name or eng_score else "")
+
             st.subheader("4. 관심분야 및 지원동기")
             st.markdown("관심분야 *")
             interest_options = ["유기화학", "무기화학", "물리화학", "분석화학", "고분자화학", "생화학"]
@@ -363,6 +389,9 @@ def page_apply():
                 f_etc_list = st.file_uploader(
                     "기타 우수성 입증 증빙 (선택, PDF, 여러 개 첨부 가능)",
                     type=["pdf"], accept_multiple_files=True)
+                if eng_test not in (None, "없음") and english_score.strip():
+                    st.caption("✅ 영어 성적을 기입하셨네요 — 성적표(증빙)를 위 '기타 우수성 입증 증빙'에 "
+                               "함께 첨부해주세요.")
                 f_photo = st.file_uploader("증명사진 (3.5*4.5) *", type=["jpg", "jpeg", "png"])
 
             st.subheader("6. 개인정보 수집·이용 동의")
@@ -371,7 +400,7 @@ def page_apply():
                 'border-radius:6px;padding:10px 14px;margin-bottom:8px;">'
                 '<b>개인정보 수집·이용 안내</b><br>'
                 '· 수집 항목: 성명, 생년월일, 성별, 휴대폰번호, 이메일, 학교·전공·학점 정보'
-                '(편입생의 경우 전적학교 정보 포함), 자기소개 및 지원동기, 증명사진, '
+                '(편입생의 경우 전적학교 정보 포함), 영어 성적, 자기소개 및 지원동기, 증명사진, '
                 '성적증명서·재학증명서·기타 증빙 등 제출 서류<br>'
                 '· 수집 목적: 연구참여 프로그램(SURF/WURF) 지원자 심사 및 선발, 선발 후 프로그램 운영·연락<br>'
                 '· 보유 및 이용 기간: 접수일로부터 1년간 보관 후 파기<br>'
@@ -408,9 +437,15 @@ def page_apply():
         ("성별", gender), ("1지망 교수님", prof1), ("2지망 교수님", prof2),
         ("학년 학기", semester), ("기준평점(만점)", scale),
         ("대학원 진학 희망 여부", grad_wish), ("기숙사 사용 여부", dorm),
+        ("영어 성적(시험 종류)", eng_test),
     ]:
         if val is None:
             required_missing.append(label)
+    if eng_test == "기타(직접 입력)" and not eng_test_custom.strip():
+        required_missing.append("영어 성적(시험명)")
+    if eng_test not in (None, "없음", "기타(직접 입력)") or (eng_test == "기타(직접 입력)" and eng_test_custom.strip()):
+        if not eng_score.strip():
+            required_missing.append("영어 성적(점수/등급)")
     if not interests:
         required_missing.append("관심분야")
     if consent_required != "예":
@@ -472,6 +507,7 @@ def page_apply():
                 "대학군": group, "4.3환산": score43, "환산성적": grade,
                 "관심분야": ", ".join(interests), "대학원진학희망": grad_wish, "희망과정": grad_wish,
                 "기숙사사용": dorm, "지원동기": motivation,
+                "영어성적": english_score,
                 "개인정보_필수": consent_required, "개인정보_선택": "",
                 "서류합격여부": doc_pass, "1지망선발여부": "", "비고": "",
                 "편입_대학군": t_group, "편입_4.3환산": t_score43, "편입_환산성적": t_grade,
