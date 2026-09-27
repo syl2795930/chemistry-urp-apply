@@ -266,12 +266,25 @@ def page_apply():
     # 작성 전에 미리 알아두면 좋은 것들(마감일, 긴 답변 작성 팁, 문의처)을 맨 위에 한 번에 모아둔다.
     # (예전엔 마감 임박 안내는 제출 버튼 옆에, 긴 글 작성 팁은 자기소개 칸 옆에 따로 흩어져
     # 있었는데, 작성을 시작하기 전에 미리 알아야 도움이 되는 내용들이라 맨 위로 옮겼다.)
-    st.info(
-        f"⏰ **접수 마감: {config.PROGRAM['deadline']}** — 마감 직전에는 접속이 몰려 제출이 지연될 수 "
-        "있으니 여유를 두고 제출해주세요.\n\n"
-        "💡 자기소개·지원동기처럼 내용이 긴 항목은 미리 다른 곳(메모장, 워드 등)에 작성해두었다가 "
-        "붙여넣는 것을 추천드려요 — 작성 중 실수로 새로고침하면 내용이 사라질 수 있어요.\n\n"
-        f"📩 문의사항이 있으면 **{CONTACT_INFO}**로 연락해주세요."
+    # st.info 기본 스타일(파란 박스, 큰 글씨)이 이 사이트의 톤(자주색 계열)과 안 어울리고 성겨
+    # 보여서, 다른 카드들과 같은 스타일(흰 배경+옅은 테두리)의 작은 글씨 박스로 직접 만들었다.
+    # 각 줄은 아이콘과 글자를 별도 칸(flex)으로 나눠서, 문장이 길어져 줄바꿈되어도 둘째 줄이
+    # 아이콘 밑이 아니라 글자 시작 위치에 맞춰 정렬되게 했다(들쭉날쭉해 보이는 것 방지).
+    b = config.BRAND
+    st.markdown(
+        f'<div style="background:#fff;border:1px solid {b["primary_light"]};border-radius:10px;'
+        'padding:14px 16px;margin-bottom:18px;font-size:13px;line-height:1.7;color:#555;">'
+        '<div style="display:flex;gap:8px;margin-bottom:6px;"><span>⏰</span>'
+        f'<span><b style="color:{b["primary_dark"]};">접수 마감: {config.PROGRAM["deadline"]}</b> — '
+        '마감 직전에는 접속이 몰려 제출이 지연될 수 있으니 여유를 두고 제출해주세요.</span></div>'
+        '<div style="display:flex;gap:8px;margin-bottom:6px;"><span>💡</span>'
+        '<span>작성 중 실수로 새로고침하면 내용이 사라질 수 있으니, 자기소개·지원동기처럼 내용이 긴 '
+        '항목은 미리 다른 곳(메모장, 워드 등)에 작성해두었다가 붙여넣는 것을 추천드려요.</span></div>'
+        '<div style="display:flex;gap:8px;"><span>📩</span>'
+        f'<span>문의사항이 있으면 <a href="mailto:{CONTACT_INFO}" style="color:{b["primary"]};">'
+        f'{CONTACT_INFO}</a>로 연락해주세요.</span></div>'
+        '</div>',
+        unsafe_allow_html=True,
     )
 
     if st.session_state.get("submitted_ok"):
