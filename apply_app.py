@@ -361,6 +361,9 @@ def page_apply():
             english_score = "없음" if eng_none else (
                 f"{eng_test.strip()}: {eng_score.strip()}".strip(": ")
                 if eng_test.strip() or eng_score.strip() else "")
+            if not eng_none and english_score.strip():
+                st.caption("💡 영어 성적을 입력하신 경우, 아래 '기타 우수성 입증 증빙'에 해당 성적표(증빙)를 "
+                           "함께 첨부해주세요.")
 
             st.subheader("4. 관심분야 및 지원동기")
             st.markdown("관심분야 *")
