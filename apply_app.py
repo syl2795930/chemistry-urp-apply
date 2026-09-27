@@ -375,6 +375,8 @@ def page_apply():
                 with col:
                     if st.checkbox(opt, key=f"interest_{opt}"):
                         interests.append(opt)
+            st.caption("💡 내용이 길다면 미리 다른 곳(메모장, 워드 등)에 작성해두었다가 붙여넣는 것을 "
+                       "추천드려요 — 작성 중 실수로 새로고침하면 내용이 사라질 수 있어요.")
             motivation = st.text_area("자기소개 및 지원동기 * (최대 2000자)", max_chars=2000, height=180)
 
             c14, c15 = st.columns(2)
@@ -415,6 +417,9 @@ def page_apply():
                 unsafe_allow_html=True,
             )
             consent_required = st.radio("개인정보 수집·이용에 동의합니다 *", ["예", "아니오"], horizontal=True, index=None)
+
+            st.caption(f"⏰ 접수 마감({config.PROGRAM['deadline']}) 직전에는 접속이 몰려 제출이 지연될 수 "
+                       "있으니, 가능한 여유를 두고 미리 제출해주세요.")
 
             with st.container(key="submit_btn_wrap"):
                 submitted = st.form_submit_button("지원서 제출", use_container_width=True, type="primary")
