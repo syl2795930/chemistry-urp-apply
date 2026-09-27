@@ -1,0 +1,24 @@
+# 이 파일은 GitHub 저장소의 .github/workflows/keep-awake.yml 위치에 넣어야 동작합니다.
+# (아래 안내 참고 — GitHub 웹사이트에서 "새 파일 만들기"로 이 경로 그대로 입력하면 됩니다)
+#
+# 하는 일: 정해진 시간마다 지원자용 사이트에 자동으로 접속(ping)해서,
+# Streamlit이 "12시간 동안 방문자 없음"으로 판단해 앱을 재우는 일이 없게 만듭니다.
+# 완전히 무료이고(GitHub 저장소 자체 기능), 외부 서비스 가입이나 이용약관 문제도 없습니다.
+
+name: Keep Streamlit app awake
+
+on:
+  schedule:
+    # 6시간마다 실행(하루 4번) — Streamlit이 재우는 기준(12시간)보다 넉넉히 여유를 둬서,
+    # 스케줄이 몇 분 늦게 실행되는 경우가 있어도 안전하게 12시간을 넘기지 않도록 함.
+    - cron: "0 */6 * * *"
+  # 저장소의 "Actions" 탭에서 손으로 바로 실행해보고 싶을 때를 위한 버튼도 같이 켜둠.
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping apply site
+        # 👇 이 URL을 실제 지원자용 앱 주소로 바꿔주세요 (관리자용 주소가 아니라 지원자용!)
+        run: curl -sS -o /dev/null -w "HTTP 상태코드: %{http_code}\n" "https://chemistry-urp-apply.streamlit.app/"
