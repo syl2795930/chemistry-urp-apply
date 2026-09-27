@@ -580,7 +580,9 @@ def labs_grid(labs_dict):
     st.caption("지원 전에 관심 있는 연구실 홈페이지를 미리 둘러보실 수 있어요. 카드를 클릭하면 새 탭에서 열립니다.")
     sections = []
     for field in sorted(labs_dict.keys()):
-        labs = labs_dict[field]
+        # 분야(필드) 순서는 이미 가나다순(sorted)인데, 그 안의 교수님 카드들은 LABS에 적어둔
+        # 순서 그대로라 가나다순이 아니었다 — 여기도 이름 기준으로 정렬해서 통일한다.
+        labs = sorted(labs_dict[field], key=lambda p: p["name"])
         cards = "".join(
             f'<a href="{lab["url"]}" target="_blank" rel="noreferrer" style="display:block;background:#fff;'
             'border:1px solid #E7D6E2;border-radius:8px;padding:12px 14px;text-decoration:none;color:inherit;">'

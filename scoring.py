@@ -28,8 +28,8 @@ LABS = {
         {"name": "심지훈", "lab": "재료설계 이론 연구실", "url": "http://dmft.postech.ac.kr"},
         {"name": "류순민", "lab": "나노물질 분광학 연구실", "url": "http://sunryu.postech.ac.kr/"},
         {"name": "김경환", "lab": "X-선 회절 및 분광학 연구실", "url": "https://www.xlcr.postech.ac.kr/"},
-        # 2026년 신임 조교수. 연구실명은 아직 안내받지 못해 빈 칸으로 둠(추후 확정되면 채우면 됨).
-        {"name": "박영욱", "lab": "", "url": "https://sites.google.com/view/ssmclab-temp"},
+        # 2026년 신임 조교수
+        {"name": "박영욱", "lab": "단분자표면화학 연구실", "url": "https://sites.google.com/view/ssmclab-temp"},
     ],
     "분석화학": [
         {"name": "서종철", "lab": "분자집합체 구조화학 연구실", "url": "http://scimms.postech.ac.kr"},
