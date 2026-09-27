@@ -372,19 +372,26 @@ def page_apply():
 
             # 영어 성적 — 드롭다운으로 시험 종류를 미리 정해두는 것보다, 그냥 두 칸(시험 종류/
             # 점수·등급)에 자유롭게 입력받는 쪽이 낫겠다고 해서 단순화. "없음" 체크박스를 누르면
-            # 두 칸을 안 채워도 된다.
+            # 칸들을 안 채워도 된다. 토플+아이엘츠처럼 여러 시험 성적을 같이 가진 경우도 있어서,
+            # 최대 3개까지 적을 수 있게 칸을 늘렸다(폼 안에서는 "칸 추가" 버튼이 눌러도 바로바로
+            # 새 칸이 생기지 않아서 — 폼 제출 전엔 화면이 안 새로고침됨 — 처음부터 3칸을 준비해두는
+            # 쪽이 안전하다). 1번째만 필수, 2·3번째는 있으면만 채우면 된다.
             st.markdown("영어 성적 *")
             eng_none = st.checkbox("해당 없음 (영어 성적 없음)", key="eng_none")
-            ec1, ec2 = st.columns(2)
-            with ec1:
-                eng_test = st.text_input("시험 종류", placeholder="예) TOEFL iBT, IELTS, OPIc 등",
-                                          disabled=eng_none, label_visibility="collapsed")
-            with ec2:
-                eng_score = st.text_input("점수 / 등급", placeholder="예) 102, 7.0, IH 등",
-                                           disabled=eng_none, label_visibility="collapsed")
-            english_score = "없음" if eng_none else (
-                f"{eng_test.strip()}: {eng_score.strip()}".strip(": ")
-                if eng_test.strip() or eng_score.strip() else "")
+            st.caption("취득한 영어 성적이 여러 개라면 아래에 최대 3개까지 적을 수 있어요.")
+            eng_rows = []
+            for i in range(3):
+                suffix = "" if i == 0 else " (선택)"
+                ec1, ec2 = st.columns(2)
+                with ec1:
+                    t = st.text_input(f"시험 종류{suffix}", placeholder="예) TOEFL iBT, IELTS, OPIc 등",
+                                       disabled=eng_none, key=f"eng_test_{i}")
+                with ec2:
+                    s = st.text_input(f"점수 / 등급{suffix}", placeholder="예) 102, 7.0, IH 등",
+                                       disabled=eng_none, key=f"eng_score_{i}")
+                eng_rows.append((t.strip(), s.strip()))
+            english_score = "없음" if eng_none else ", ".join(
+                f"{t}: {s}".strip(": ") for t, s in eng_rows if t or s)
             if not eng_none and english_score.strip():
                 st.caption("💡 영어 성적을 입력하신 경우, 아래 '기타 우수성 입증 증빙'에 해당 성적표(증빙)를 "
                            "함께 첨부해주세요.")
@@ -471,10 +478,14 @@ def page_apply():
         if val is None:
             required_missing.append(label)
     if not eng_none:
-        if not eng_test.strip():
+        t0, s0 = eng_rows[0]
+        if not t0:
             required_missing.append("영어 성적(시험 종류)")
-        if not eng_score.strip():
+        if not s0:
             required_missing.append("영어 성적(점수/등급)")
+        for idx, (t, s) in enumerate(eng_rows[1:], start=2):
+            if bool(t) != bool(s):
+                required_missing.append(f"영어 성적 {idx}번째 항목(시험 종류·점수 둘 다 입력하거나 둘 다 비워두기)")
     if not interests:
         required_missing.append("관심분야")
     if consent_required != "예":
