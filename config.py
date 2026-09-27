@@ -3,6 +3,10 @@
 프로그램(SURF/WURF) 회차가 바뀔 때마다 이 파일의 값들만 고치면 됩니다.
 화면 문구, 공지사항, 지난 이력, FAQ, 관련 사이트 링크를 한 곳에 모아뒀습니다.
 """
+import datetime
+from zoneinfo import ZoneInfo
+
+KST = ZoneInfo("Asia/Seoul")
 
 BRAND = {
     "primary": "#C81D6F",       # POSTECH G-RED
@@ -21,13 +25,18 @@ PROGRAM = {
         "우수 연구인력 양성에 기여함과 동시에 연구경험을 조기에 쌓고 실험실에 적응할 수 있도록 "
         "동계연구참여 프로그램(WURF)을 운영하고자 합니다."
     ),
-    "period": "2027년 1월 ~ 2월 중",
-    "period_note": "일정 추후 확정 예정",
-    "deadline": "미정",
-    "deadline_note": "추후 확정 예정",
-    "announce": "미정",
-    "announce_note": "추후 확정 예정",
+    "period": "2027. 1. 11(월) ~ 2. 5(금) (4주간)",
+    "period_note": "",
+    "deadline": "2026. 11. 20(금) 15:00",
+    "deadline_note": "",
+    # 실제 접수 마감을 코드로 강제하는 기준 시각(한국시간). 화면에 보이는 문구(deadline, 위)는
+    # 사람이 읽는 텍스트일 뿐이라 자동으로 접수를 막지는 않는다 — 실제 마감 처리는 이 값을
+    # 기준으로 apply_app.py에서 확인한다. 회차가 바뀌면 이 값도 같이 바꿔야 한다.
+    "deadline_dt": datetime.datetime(2026, 11, 20, 15, 0, tzinfo=KST),
+    "announce": "2026. 12. 4(금) 15:00",
+    "announce_note": "",
 }
+
 PROGRAM["round_key"] = f"{PROGRAM['year']}-{PROGRAM['short_name']}"  # 예: "2027-WURF" (다음엔 "2027-SURF" 식으로)
 
 # 홈 화면 하단 공지사항 게시판. 지금 모집 중인 이번 회차({PROGRAM['name']})는 히어로/모집공고

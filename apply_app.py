@@ -250,6 +250,19 @@ def page_apply():
     st.header("지원서 작성")
     theme.program_badge(config.PROGRAM["round_key"])
 
+    # 접수 마감 시각(한국시간 기준)이 지났으면, 폼을 아예 그리지 않고 마감 안내만 보여준다.
+    now_kst = datetime.datetime.now(config.KST)
+    deadline_dt = config.PROGRAM.get("deadline_dt")
+    if deadline_dt and now_kst >= deadline_dt:
+        with st.container(key="apply_box"):
+            st.subheader("접수가 마감되었습니다")
+            st.markdown(
+                f"**{config.PROGRAM['name']}** 지원 접수는 **{config.PROGRAM['deadline']}**에 마감되었습니다.\n\n"
+                f"서류합격자 발표: **{config.PROGRAM['announce']}** 예정\n\n"
+                f"문의사항은 아래 연락처로 문의해주세요.\n\n{config.NOTICE_DETAIL['contact']}"
+            )
+        return
+
     if st.session_state.get("submitted_ok"):
         with st.container(key="apply_box"):
             theme.submission_success_card(CONTACT_INFO)
