@@ -20,6 +20,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping apply site
-        # 👇 이 URL을 실제 지원자용 앱 주소로 바꿔주세요 (관리자용 주소가 아니라 지원자용!)
         run: |
           curl -sS -o /dev/null -w "status=%{http_code}\n" "https://chemistry-urp-apply.streamlit.app/"
