@@ -1,24 +1,52 @@
-# 이 파일은 GitHub 저장소의 .github/workflows/keep-awake.yml 위치에 넣어야 동작합니다.
-# (아래 안내 참고 — GitHub 웹사이트에서 "새 파일 만들기"로 이 경로 그대로 입력하면 됩니다)
-#
-# 하는 일: 정해진 시간마다 지원자용 사이트에 자동으로 접속(ping)해서,
-# Streamlit이 "12시간 동안 방문자 없음"으로 판단해 앱을 재우는 일이 없게 만듭니다.
-# 완전히 무료이고(GitHub 저장소 자체 기능), 외부 서비스 가입이나 이용약관 문제도 없습니다.
+# .github/workflows/keep-awake.yml
+# Opens the apply site in a real headless browser every 4 hours, so Streamlit sees a live
+# visitor session (websocket) and does not put the app to sleep. If the app is already
+# asleep, the script clicks the wake-up button.
 
 name: Keep Streamlit app awake
 
 on:
   schedule:
-    # 6시간마다 실행(하루 4번) — Streamlit이 재우는 기준(12시간)보다 넉넉히 여유를 둬서,
-    # 스케줄이 몇 분 늦게 실행되는 경우가 있어도 안전하게 12시간을 넘기지 않도록 함.
-    - cron: "0 */6 * * *"
-  # 저장소의 "Actions" 탭에서 손으로 바로 실행해보고 싶을 때를 위한 버튼도 같이 켜둠.
+    - cron: "0 */4 * * *"
   workflow_dispatch: {}
 
 jobs:
-  ping:
-    runs-on: ubuntu-latest
+  wake:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
-      - name: Ping apply site
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install browser
         run: |
-          curl -sS -o /dev/null -w "status=%{http_code}\n" "https://chemistry-urp-apply.streamlit.app/"
+          pip install playwright
+          playwright install --with-deps chromium
+
+      - name: Visit the app like a real visitor
+        run: |
+          cat > visit.py << 'PYEOF'
+          from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
+
+          URL = "https://chemistry-urp-apply.streamlit.app/"
+
+          with sync_playwright() as p:
+              browser = p.chromium.launch()
+              page = browser.new_page()
+              page.goto(URL, wait_until="domcontentloaded", timeout=90000)
+              woke = False
+              try:
+                  btn = page.get_by_role("button", name="Yes, get this app back up!")
+                  btn.wait_for(timeout=20000)
+                  btn.click()
+                  woke = True
+                  print("App was asleep: wake-up button clicked")
+              except PWTimeout:
+                  print("App was already awake")
+              # Stay on the page so a live session is registered (longer if it was just woken up)
+              page.wait_for_timeout(120000 if woke else 40000)
+              print("Page title:", page.title())
+              browser.close()
+          PYEOF
+          python visit.py
