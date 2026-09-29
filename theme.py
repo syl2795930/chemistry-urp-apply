@@ -550,7 +550,7 @@ def program_history_table(past_programs):
         '<thead><tr style="background:#F8EEF5;text-align:left;">'
         '<th style="padding:10px 14px;font-weight:600;color:#555;border-bottom:1px solid #E7D6E2;">회차</th>'
         '<th style="padding:10px 14px;font-weight:600;color:#555;border-bottom:1px solid #E7D6E2;">참여 기간</th>'
-        '<th style="padding:10px 14px;font-weight:600;color:#555;border-bottom:1px solid #E7D6E2;">참여 인원</th>'
+        '<th style="padding:10px 14px;font-weight:600;color:#555;border-bottom:1px solid #E7D6E2;">선발 인원</th>'
         '</tr></thead>'
         f'<tbody>{rows}</tbody>'
         '</table></div>'
