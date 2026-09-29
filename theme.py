@@ -357,7 +357,10 @@ def notice_detail_card(program, detail):
         ("장소", detail["place"]),
         ("특전", detail["benefit"]),
         ("신청방법", detail["how_to_apply"]),
-        ("신청기한", program["deadline"]),
+        # 모집공고 표의 "신청기한"에는 마감 시각 뒤에 "까지"를 붙여서 문장으로 자연스럽게 읽히게
+        # 한다(다른 곳 — 상단 요약 카드, 지원서 작성 화면 안내 등 — 에서는 "접수마감: OOO"처럼
+        # 라벨이 이미 "까지"의 의미를 담고 있어서 그대로 두고, 여기 표에서만 붙인다).
+        ("신청기한", f'{program["deadline"]}까지'),
         ("발표", program["announce"]),
         ("문의처", detail["contact"]),
         ("기타사항", detail["note"]),
