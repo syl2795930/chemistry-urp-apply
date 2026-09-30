@@ -19,8 +19,8 @@ LABS = {
         {"name": "최희철", "lab": "나노재료화학 연구실", "url": "https://www.nmrl.postech.ac.kr/"},
         {"name": "이인수", "lab": "나노입자재료 연구실", "url": "http://npml.postech.ac.kr"},
         {"name": "서대하", "lab": "시스템 나노의학 및 세포 이미징 연구실", "url": "http://small.postech.ac.kr"},
-        # 2026년 신임 조교수. 연구실명은 아직 안내받지 못해 빈 칸으로 둠(추후 확정되면 채우면 됨).
-        {"name": "김희찬", "lab": "", "url": "https://www.chemheechan.com/"},
+        # 2026년 신임 조교수.
+        {"name": "김희찬", "lab": "기능성분자합성연구실", "url": "https://www.chemheechan.com/"},
     ],
     "물리화학": [
         {"name": "주태하", "lab": "극초고속 동력학 연구실", "url": "http://femto.postech.ac.kr"},
