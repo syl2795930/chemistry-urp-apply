@@ -440,7 +440,7 @@ def prof_summary_table(counts1: dict, counts2: dict, state_key: str, all_profs_l
         # 행 수에 맞춰 높이를 계산해서 전부 한 번에 보이게 한다.
         _tbl_height = 38 + 35 * len(all_profs) + 3
         event = st.dataframe(
-            tdf, width=220, hide_index=True, height=_tbl_height,
+            tdf, width=280, hide_index=True, height=_tbl_height,
             on_select="rerun", selection_mode="single-row", key=f"prof_summary_{state_key}",
             column_config={
                 "성명": st.column_config.TextColumn("성명", width="small"),
