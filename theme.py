@@ -539,7 +539,6 @@ def program_history_table(past_programs):
         '<tr style="border-bottom:1px solid #F1DFEC;">'
         f'<td style="padding:10px 14px;font-weight:600;">{p["name"]}</td>'
         f'<td style="padding:10px 14px;color:#555;">{p["period"]}</td>'
-        f'<td style="padding:10px 14px;color:#555;">{p["count"]}</td>'
         '</tr>'
         for p in past_programs
     )
@@ -550,7 +549,6 @@ def program_history_table(past_programs):
         '<thead><tr style="background:#F8EEF5;text-align:left;">'
         '<th style="padding:10px 14px;font-weight:600;color:#555;border-bottom:1px solid #E7D6E2;">회차</th>'
         '<th style="padding:10px 14px;font-weight:600;color:#555;border-bottom:1px solid #E7D6E2;">참여 기간</th>'
-        '<th style="padding:10px 14px;font-weight:600;color:#555;border-bottom:1px solid #E7D6E2;">선발 인원</th>'
         '</tr></thead>'
         f'<tbody>{rows}</tbody>'
         '</table></div>'
