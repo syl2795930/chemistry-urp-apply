@@ -666,8 +666,12 @@ if sub_clicked:
     _subscribe_dialog()
 
 view = st.session_state["view"]
+# 화면을 맨 위로 올리는 스크립트는 페이지 내용을 다 그린 "맨 끝"에서 실행한다.
+# (맨 앞에서 실행하면, 제출 후 화면이 완료 카드로 바뀔 때 Streamlit이 이전 입력폼을 지우지 못하고
+#  그대로 남겨두는 문제가 있었다 — 완료 카드가 폼 아래로 밀려 맨 밑에 보이던 현상)
+_need_scroll_top = False
 if st.session_state.get("_last_view") != view or st.session_state.pop("_force_scroll_top", False):
-    theme.scroll_to_top()
+    _need_scroll_top = True
     st.session_state["_last_view"] = view
 
 if view == "apply":
@@ -680,3 +684,6 @@ else:
     page_home()
 
 theme.footer()
+
+if _need_scroll_top:
+    theme.scroll_to_top()
