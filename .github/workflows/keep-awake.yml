@@ -1,9 +1,12 @@
-# .github/workflows/keep-awake.yml
-# Opens the apply site in a real headless browser every 4 hours, so Streamlit sees a live
-# visitor session (websocket) and does not put the app to sleep. If the app is already
-# asleep, the script clicks the wake-up button.
+# 이 파일은 GitHub 저장소(chemistry-urp-apply)의 main 브랜치,
+# .github/workflows/keep-awake.yml 위치에 있어야 동작합니다.
+#
+# 하는 일: 4시간마다 실제 브라우저(Playwright)로 아래 사이트들에 접속해서
+# Streamlit이 "12시간 동안 방문자 없음"으로 판단해 앱을 재우는 일이 없게 만듭니다.
+# 이미 잠들어 있으면 "깨우기" 버튼을 대신 눌러 줍니다.
+# (단순 curl 접속은 방문으로 인정되지 않아서, 실제 브라우저로 접속합니다.)
 
-name: Keep Streamlit app awake
+name: Keep Streamlit apps awake
 
 on:
   schedule:
@@ -11,42 +14,55 @@ on:
   workflow_dispatch: {}
 
 jobs:
-  wake:
+  ping:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Install browser
+      - name: Install Playwright
         run: |
           pip install playwright
           playwright install --with-deps chromium
 
-      - name: Visit the app like a real visitor
+      - name: Visit apps
         run: |
-          cat > visit.py << 'PYEOF'
-          from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
+          cat > visit.py <<'PY'
+          import sys, time
+          from playwright.sync_api import sync_playwright
 
-          URL = "https://chemistry-urp-apply.streamlit.app/"
+          # 지켜야 할 사이트 목록 (지원자 사이트 + 공모전 데모 2개)
+          URLS = [
+              "https://chemistry-urp-apply.streamlit.app/",
+              "https://chemistry-urp-apply-demo.streamlit.app/",
+              "https://chemistry-urp-demo-manage.streamlit.app/",
+          ]
 
+          failed = []
           with sync_playwright() as p:
               browser = p.chromium.launch()
-              page = browser.new_page()
-              page.goto(URL, wait_until="domcontentloaded", timeout=90000)
-              woke = False
-              try:
-                  btn = page.get_by_role("button", name="Yes, get this app back up!")
-                  btn.wait_for(timeout=20000)
-                  btn.click()
-                  woke = True
-                  print("App was asleep: wake-up button clicked")
-              except PWTimeout:
-                  print("App was already awake")
-              # Stay on the page so a live session is registered (longer if it was just woken up)
-              page.wait_for_timeout(120000 if woke else 40000)
-              print("Page title:", page.title())
+              for url in URLS:
+                  try:
+                      page = browser.new_page()
+                      page.goto(url, timeout=60000)
+                      time.sleep(10)
+                      wake = page.get_by_role("button", name="Yes, get this app back up!")
+                      if wake.count() > 0:
+                          wake.first.click()
+                          print(url, "-> 잠들어 있어서 깨우기 버튼을 눌렀습니다")
+                          time.sleep(45)
+                      else:
+                          print(url, "-> 이미 깨어 있었습니다")
+                      page.close()
+                  except Exception as e:
+                      print(url, "-> 오류:", e)
+                      failed.append(url)
               browser.close()
-          PYEOF
+
+          if failed:
+              print("접속에 실패한 사이트:", failed)
+              sys.exit(1)
+          PY
           python visit.py
