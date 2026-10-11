@@ -28,6 +28,7 @@ drive_folder_id = "구글드라이브_루트폴더_ID"
 admin_password = "관리자비밀번호"
 """
 import io
+import re
 import base64
 import datetime
 from zoneinfo import ZoneInfo
@@ -49,12 +50,6 @@ def now_kst() -> datetime.datetime:
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
-]
-
-# Cloud Vision API(서류 텍스트 인식, 무료 티어: 월 1,000건까지) 접근 범위.
-# 시트에 쓰는 서비스 계정 키를 그대로 재사용하되, 이 스코프만 추가로 받아서 쓴다.
-VISION_SCOPES = [
-    "https://www.googleapis.com/auth/cloud-vision",
 ]
 
 # 드라이브는 "이 앱이 만든 파일에만 접근" 범위로 최소화 (내 드라이브 전체 접근 아님)
@@ -94,43 +89,33 @@ def _get_gc():
     return gspread.authorize(_get_creds())
 
 
-@st.cache_resource(show_spinner=False)
-def _get_vision_creds():
-    info = dict(st.secrets["gcp_service_account"])
-    return Credentials.from_service_account_info(info, scopes=VISION_SCOPES)
-
-
-@st.cache_resource(show_spinner=False)
-def _get_vision_service():
-    from googleapiclient.discovery import build as _build
-    return _build("vision", "v1", credentials=_get_vision_creds(), cache_discovery=False)
+_MIN_TEXT_CHARS = 30  # 이보다 적게 뽑히면 "글자가 들어있지 않은 파일(스캔본·사진)"으로 본다
 
 
 def ocr_document_text(file_bytes: bytes, filename: str) -> str:
-    """서류 파일(이미지 또는 PDF)에서 글자를 인식해서 텍스트로 반환한다 (Google Cloud Vision,
-    무료 티어). 사진으로 찍어 올린 서류도 인식된다. 인식 실패/오류 시 빈 문자열을 반환한다."""
-    service = _get_vision_service()
-    is_pdf = filename.lower().endswith(".pdf")
-    b64 = base64.b64encode(file_bytes).decode()
+    """서류 PDF 안에 들어있는 글자를 서버 안에서 직접 읽어서(텍스트 추출) 반환한다.
+    외부 AI·클라우드 서비스로 서류를 보내지 않는다 (개인정보 보호).
+    학교에서 발급한 증명서 PDF는 대개 글자가 들어있는 PDF라 그대로 읽힌다.
+    스캔본·사진처럼 글자가 없는 파일이면 '[인식 실패...]'를 반환하고, 담당자가 직접 확인하도록 안내된다."""
+    if not str(filename).lower().endswith(".pdf"):
+        return "[인식 실패: PDF가 아닌 파일은 글자를 읽지 않습니다]"
     try:
-        if is_pdf:
-            # PDF는 파일 단위 인식(files.annotate)을 쓴다. 동기 처리는 최대 5페이지까지 지원.
-            body = {
-                "requests": [{
-                    "inputConfig": {"content": b64, "mimeType": "application/pdf"},
-                    "features": [{"type": "DOCUMENT_TEXT_DETECTION"}],
-                    "pages": [1, 2, 3, 4, 5],
-                }]
-            }
-            resp = service.files().annotate(body=body).execute()
-            pages = resp.get("responses", [{}])[0].get("responses", [])
-            texts = [p.get("fullTextAnnotation", {}).get("text", "") for p in pages]
-            return "\n".join(t for t in texts if t)
-        else:
-            body = {"requests": [{"image": {"content": b64},
-                                   "features": [{"type": "DOCUMENT_TEXT_DETECTION"}]}]}
-            resp = service.images().annotate(body=body).execute()
-            return resp.get("responses", [{}])[0].get("fullTextAnnotation", {}).get("text", "")
+        from pypdf import PdfReader
+        reader = PdfReader(io.BytesIO(file_bytes))
+        if reader.is_encrypted:
+            try:
+                reader.decrypt("")
+            except Exception:
+                return "[인식 실패: 암호가 걸린 PDF]"
+        texts = []
+        for page in reader.pages[:5]:  # 앞쪽 5페이지만 읽는다 (증명서는 1~2장)
+            t = page.extract_text() or ""
+            if t.strip():
+                texts.append(t)
+        text = "\n".join(texts)
+        if len(re.sub(r"\s+", "", text)) < _MIN_TEXT_CHARS:
+            return "[인식 실패: 글자가 들어있지 않은 PDF(스캔본·이미지)]"
+        return text
     except Exception as e:
         return f"[인식 실패: {e}]"
 

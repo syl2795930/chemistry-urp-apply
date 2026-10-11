@@ -177,7 +177,7 @@ def check_document_text(ocr_text: str, school: str, gpa: str, check_gpa: bool = 
     notes = []
     text = str(ocr_text or "")
     if not text.strip() or text.startswith("[인식 실패"):
-        notes.append("서류에서 글자를 인식하지 못했어요 (사진이 흐리거나 형식이 특이할 수 있어요).")
+        notes.append("서류에서 글자를 읽지 못했어요 (스캔본·이미지 PDF일 수 있어요) — 담당자가 직접 확인해주세요.")
         return notes
 
     norm_text = re.sub(r"\s+", "", text)
@@ -209,7 +209,7 @@ def check_documents_combined(texts_by_label: dict, school: str, gpa: str) -> lis
     all_text = "\n".join(t for t in texts_by_label.values() if t)
     all_failed = all((not t) or str(t).startswith("[인식 실패") for t in texts_by_label.values())
     if not all_text.strip() or all_failed:
-        notes.append("서류에서 글자를 인식하지 못했어요 (사진이 흐리거나 형식이 특이할 수 있어요).")
+        notes.append("서류에서 글자를 읽지 못했어요 (스캔본·이미지 PDF일 수 있어요) — 담당자가 직접 확인해주세요.")
         return notes
 
     norm_all = re.sub(r"\s+", "", all_text)
