@@ -378,7 +378,8 @@ def page_apply():
             # 쪽이 안전하다). 1번째만 필수, 2·3번째는 있으면만 채우면 된다.
             st.markdown("영어 성적 *")
             eng_none = st.checkbox("해당 없음 (영어 성적 없음)", key="eng_none")
-            st.caption("취득한 영어 성적이 여러 개라면 아래에 최대 3개까지 적을 수 있어요.")
+            st.caption("취득한 영어 성적이 여러 개라면 아래에 최대 3개까지 적을 수 있어요. "
+                       "영어 성적이 있으시면 성적표(증빙)를 아래 5번 '기타 우수성 입증 증빙'에 함께 첨부해주세요.")
             eng_rows = []
             for i in range(3):
                 suffix = "" if i == 0 else " (선택)"
@@ -392,9 +393,6 @@ def page_apply():
                 eng_rows.append((t.strip(), s.strip()))
             english_score = "없음" if eng_none else ", ".join(
                 f"{t}: {s}".strip(": ") for t, s in eng_rows if t or s)
-            if not eng_none and english_score.strip():
-                st.caption("💡 영어 성적을 입력하신 경우, 아래 '기타 우수성 입증 증빙'에 해당 성적표(증빙)를 "
-                           "함께 첨부해주세요.")
 
             st.subheader("4. 관심분야 및 지원동기")
             st.markdown("관심분야 *")
@@ -426,9 +424,6 @@ def page_apply():
                 f_etc_list = st.file_uploader(
                     "기타 우수성 입증 증빙 (선택, PDF, 여러 개 첨부 가능)",
                     type=["pdf"], accept_multiple_files=True)
-                if not eng_none and english_score.strip():
-                    st.caption("✅ 영어 성적을 기입하셨네요 — 성적표(증빙)를 위 '기타 우수성 입증 증빙'에 "
-                               "함께 첨부해주세요.")
                 f_photo = st.file_uploader("증명사진 (3.5*4.5) *", type=["jpg", "jpeg", "png"])
 
             st.subheader("6. 개인정보 수집·이용 동의")
