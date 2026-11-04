@@ -1,9 +1,9 @@
 streamlit==1.66.1
-pandas>=2.0,<3
+pandas>=2.0
 gspread>=6.1
 google-auth>=2.30
 google-api-python-client>=2.130
-reportlab>=4.0,<5
-pypdf>=5.0,<6
+reportlab>=4.0
+pypdf>=5.0
 openpyxl>=3.1
-Pillow>=10.0,<12
+Pillow>=10.0
