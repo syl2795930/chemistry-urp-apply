@@ -1,0 +1,327 @@
+# 복구 브랜치에서만 실행. 앱 코드·디자인·Secrets를 수정하지 않습니다.
+# 관리자 로그인, 실제 지원서 제출, 첨부파일 업로드를 수행하지 않습니다.
+name: Streamlit browser diagnosis
+
+on:
+  push:
+    branches: [recovery-20261104]
+    paths: [.github/workflows/streamlit_diagnosis.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: streamlit-diagnosis-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    if: github.ref == 'refs/heads/recovery-20261104'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Read recovery branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Prepare Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Prepare diagnostic output
+        run: mkdir -p diagnostic_results
+
+      - name: Install app dependencies
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pip install -r requirements.txt 'pyarrow==24.0.0' 2>&1 | tee diagnostic_results/install_app.log
+
+      - name: Install browser test tools
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pip install 'playwright>=1.56,<2' 2>&1 | tee diagnostic_results/install_browser.log
+          python -m playwright install --with-deps chromium
+
+      - name: Compare original design locally and on Cloud
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/diagnose_streamlit.py" <<'PYDIAG'
+          """지원서 원본을 변경하지 않는 일회성 브라우저 진단. 제출·로그인·파일 업로드 안 함."""
+          from __future__ import annotations
+
+          import importlib.metadata
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import shutil
+          import subprocess
+          import sys
+          import tempfile
+          import time
+          import urllib.request
+          from urllib.parse import urlsplit, urlunsplit
+
+          ROOT = Path.cwd()
+          OUT = ROOT / "diagnostic_results"
+          OUT.mkdir(exist_ok=True)
+          ORIGINAL = "https://chemistry-urp-apply.streamlit.app/"
+          RECOVERY = "https://chemistry-urp-apply-hvgxqelz9aeswd94tynhxm.streamlit.app/"
+          COUNTS = {
+              "text_inputs": '[data-testid="stTextInput"] input',
+              "selectboxes": '[data-testid="stSelectbox"]',
+              "text_areas": '[data-testid="stTextArea"] textarea',
+              "checkboxes": '[data-testid="stCheckbox"]',
+              "upload_inputs": 'input[type="file"]',
+          }
+          EXPECTED = {"text_inputs": 19, "selectboxes": 8, "text_areas": 1,
+                      "checkboxes": 7, "upload_inputs": 4}
+
+
+          def safe_url(value: str) -> str:
+              """쿼리·프래그먼트·URL 내 인증정보를 기록하지 않음."""
+              try:
+                  p = urlsplit(value)
+                  if p.scheme not in ("http", "https", "ws", "wss"):
+                      return p.scheme + ":"
+                  host = p.hostname or ""
+                  if p.port:
+                      host += ":" + str(p.port)
+                  return urlunsplit((p.scheme, host, p.path, "", ""))
+              except ValueError:
+                  return "[URL omitted]"
+
+
+          def safe_message(value: object) -> str:
+              text = str(value)
+              text = re.sub(r'https?://[^\s<>"\']+', lambda m: safe_url(m.group()), text)
+              return text[:1500]
+
+
+          def start_local():
+              """공개 소스만 복사. Secrets와 GitHub 인증정보는 테스트 앱에 넘기지 않음."""
+              work = Path(tempfile.mkdtemp(prefix="streamlit-diagnosis-"))
+              for name in ("apply_app.py", "theme.py", "config.py", "scoring.py",
+                           "gsheets.py", "pdf_gen.py", "config.toml"):
+                  src = ROOT / name
+                  if src.is_file():
+                      shutil.copy2(src, work / name)
+              cfg = ROOT / ".streamlit" / "config.toml"
+              if cfg.is_file():
+                  (work / ".streamlit").mkdir()
+                  shutil.copy2(cfg, work / ".streamlit" / "config.toml")
+              env = dict(os.environ)
+              for key in list(env):
+                  if any(word in key.upper() for word in ("TOKEN", "PASSWORD", "SECRET", "API_KEY")):
+                      env.pop(key, None)
+              home = work / "isolated_home"
+              home.mkdir()
+              env["HOME"] = str(home)
+              env["PYTHONUNBUFFERED"] = "1"
+              log = (OUT / "local_server.log").open("w", encoding="utf-8")
+              proc = subprocess.Popen([
+                  sys.executable, "-m", "streamlit", "run", "apply_app.py",
+                  "--server.address=127.0.0.1", "--server.port=8501",
+                  "--server.headless=true", "--browser.gatherUsageStats=false",
+              ], cwd=work, env=env, stdout=log, stderr=subprocess.STDOUT)
+              ready = False
+              for _ in range(90):
+                  if proc.poll() is not None:
+                      break
+                  try:
+                      with urllib.request.urlopen("http://127.0.0.1:8501/_stcore/health", timeout=1) as r:
+                          if r.status == 200:
+                              ready = True
+                              break
+                  except Exception:
+                      time.sleep(0.5)
+              return proc, log, ready
+
+
+          def inspect_case(browser, label: str, target: str) -> dict:
+              """새 브라우저 세션에서 홈→지원하기만 열고, 요청 실패와 위젯 생성을 기록."""
+              ctx = browser.new_context(viewport={"width": 1440, "height": 1000})
+              page = ctx.new_page()
+              page.set_default_timeout(2000)
+              result = {"case": label, "target": safe_url(target), "embedded": "embed=true" in target,
+                        "events": [], "home_found": False, "form_found": False,
+                        "counts": {}, "expected_counts": EXPECTED, "submission_tested": False}
+              events = result["events"]
+
+              def response_event(resp):
+                  req = resp.request
+                  if req.resource_type in ("script", "stylesheet", "document") or resp.status >= 400:
+                      events.append({"kind": "response", "url": safe_url(resp.url),
+                                     "status": resp.status, "resource_type": req.resource_type,
+                                     "content_type": resp.headers.get("content-type", "")})
+
+              def failed_event(req):
+                  events.append({"kind": "request_failed", "url": safe_url(req.url),
+                                 "resource_type": req.resource_type, "error": safe_message(req.failure)})
+
+              def console_event(msg):
+                  if msg.type == "error":
+                      events.append({"kind": "console_error", "message": safe_message(msg.text)})
+
+              def socket_event(ws):
+                  events.append({"kind": "websocket_open", "url": safe_url(ws.url)})
+                  ws.on("socketerror", lambda err: events.append(
+                      {"kind": "websocket_error", "url": safe_url(ws.url), "error": safe_message(err)}))
+
+              page.on("response", response_event)
+              page.on("requestfailed", failed_event)
+              page.on("console", console_event)
+              page.on("pageerror", lambda err: events.append(
+                  {"kind": "page_error", "message": safe_message(err)}))
+              page.on("websocket", socket_event)
+              app_frame = None
+              try:
+                  try:
+                      page.goto(target, wait_until="domcontentloaded", timeout=45000)
+                  except Exception as exc:
+                      result["navigation_error"] = safe_message(exc)
+
+                  deadline = time.monotonic() + 45
+                  while time.monotonic() < deadline and app_frame is None:
+                      # 관리화면이나 외부 로그인 화면에는 입력/클릭하지 않음.
+                      for frame in page.frames:
+                          if urlsplit(frame.url).hostname != urlsplit(target).hostname:
+                              continue
+                          btn = frame.get_by_role("button", name="지원하기", exact=True)
+                          if btn.count() and btn.first.is_visible():
+                              result["home_found"] = True
+                              btn.first.click(timeout=5000)
+                              app_frame = frame
+                              break
+                      if app_frame is None:
+                          page.wait_for_timeout(300)
+
+                  if app_frame is not None:
+                      try:
+                          app_frame.get_by_role("heading", name="지원서 작성", exact=True).wait_for(
+                              state="visible", timeout=20000)
+                          result["form_found"] = True
+                      except Exception as exc:
+                          result["form_error"] = safe_message(exc)
+                      deadline = time.monotonic() + 30
+                      while time.monotonic() < deadline:
+                          counts = {name: app_frame.locator(selector).count()
+                                    for name, selector in COUNTS.items()}
+                          result["counts"] = counts
+                          if all(counts.get(k, 0) >= v for k, v in EXPECTED.items()):
+                              break
+                          page.wait_for_timeout(300)
+                      if result["counts"].get("selectboxes", 0):
+                          try:
+                              box = app_frame.locator('[data-testid="stSelectbox"]').first
+                              box.click(timeout=5000)
+                              app_frame.get_by_role("option", name="남", exact=True).wait_for(
+                                  state="visible", timeout=5000)
+                              result["dropdown_opened"] = True
+                              page.keyboard.press("Escape")
+                          except Exception as exc:
+                              result["dropdown_opened"] = False
+                              result["dropdown_error"] = safe_message(exc)
+                  if app_frame is not None:
+                      result["skeleton_count"] = app_frame.locator(
+                          '[data-testid="stSkeleton"]').count()
+                      result["module_error_count"] = app_frame.get_by_text(
+                          "Failed to fetch dynamically imported module", exact=False).count()
+                  result["final_url"] = safe_url(page.url)
+                  result["frames"] = [safe_url(f.url) for f in page.frames]
+                  page.screenshot(path=str(OUT / f"{label}.png"), full_page=True, timeout=15000)
+              except Exception as exc:
+                  result["test_error"] = safe_message(exc)
+              finally:
+                  ctx.close()
+              result["complete_controls"] = result["form_found"] and all(
+                  result["counts"].get(k, 0) >= v for k, v in EXPECTED.items())
+              (OUT / f"{label}.json").write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+              return result
+
+
+          def main():
+              from playwright.sync_api import sync_playwright
+              metadata = {"python": sys.version, "commit": os.environ.get("GITHUB_SHA", ""),
+                          "note": "화면 진단만 수행. 실제 접수·첨부 저장·동시접속 부하 시험은 수행하지 않음.",
+                          "packages": {d.metadata["Name"]: d.version
+                                       for d in importlib.metadata.distributions() if d.metadata.get("Name")}}
+              (OUT / "environment.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
+              proc, log, ready = start_local()
+              results = []
+              try:
+                  with sync_playwright() as p:
+                      browser = p.chromium.launch()
+                      metadata["browser"] = browser.version
+                      cases = []
+                      if ready:
+                          cases.append(("local_original_design", "http://127.0.0.1:8501/"))
+                      else:
+                          results.append({"case": "local_original_design", "startup_failed": True,
+                                          "counts": {}, "complete_controls": False})
+                      cases += [
+                          ("original_cloud_normal", ORIGINAL),
+                          ("original_cloud_embedded", ORIGINAL + "?embed=true"),
+                          ("recovery_cloud_normal", RECOVERY),
+                          ("recovery_cloud_embedded", RECOVERY + "?embed=true"),
+                      ]
+                      for label, url in cases:
+                          print(f"DIAG_START {label}", flush=True)
+                          try:
+                              result = inspect_case(browser, label, url)
+                          except Exception as exc:
+                              result = {"case": label, "test_error": safe_message(exc),
+                                        "counts": {}, "complete_controls": False}
+                          results.append(result)
+                          print("DIAG_RESULT " + json.dumps({k: v for k, v in result.items() if k != "events"}, ensure_ascii=False), flush=True)
+                          for event in result.get("events", []):
+                              if event["kind"] != "response" or event.get("status", 0) >= 400:
+                                  print("DIAG_EVENT " + json.dumps(event, ensure_ascii=False), flush=True)
+                      browser.close()
+              finally:
+                  proc.terminate()
+                  try:
+                      proc.wait(timeout=10)
+                  except subprocess.TimeoutExpired:
+                      proc.kill()
+                      proc.wait(timeout=5)
+                  log.close()
+              (OUT / "environment.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
+              (OUT / "summary.json").write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
+              lines = ["## Streamlit 브라우저 진단", "",
+                       "진단 완료는 서비스 복구 완료를 의미하지 않습니다. 제출·저장은 시험하지 않았습니다.", "",
+                       "| 환경 | 입력 요소 생성 | 개수 |", "|---|---|---|"]
+              for r in results:
+                  state = "모든 기대 요소 발견" if r.get("complete_controls") else "미완료 — 상세 기록 확인"
+                  lines.append(f"| {r['case']} | {state} | `{json.dumps(r.get('counts', {}))}` |")
+              lines += ["", "- 일반 접속과 embedded 접속은 서로 다른 새 브라우저 세션에서 한 번씩 비교합니다.",
+                        "- 이 실행 환경의 결과이며, 다른 지역·브라우저 및 간헐적 오류 전체를 배제하지 않습니다.",
+                        "- 환경별 Python 패키지 차이는 environment.json 및 Cloud 설치 로그와 대조해야 합니다."]
+              report = "\n".join(lines) + "\n"
+              (OUT / "SUMMARY.md").write_text(report, encoding="utf-8")
+              if os.environ.get("GITHUB_STEP_SUMMARY"):
+                  with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+                      f.write(report)
+              print("DIAG_DONE: 결과는 diagnostic_results에 저장했습니다. 실제 접수 시험은 수행하지 않았습니다.", flush=True)
+
+
+          if __name__ == "__main__":
+              main()
+          PYDIAG
+          set -o pipefail
+          python "$RUNNER_TEMP/diagnose_streamlit.py" 2>&1 | tee diagnostic_results/run.log
+
+      - name: Retain diagnostic results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: streamlit-diagnostic-results
+          path: diagnostic_results/
+          retention-days: 3
+          compression-level: 9
+          if-no-files-found: warn
