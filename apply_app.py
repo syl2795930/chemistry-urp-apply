@@ -11,6 +11,8 @@ import html
 import base64
 import datetime
 from pathlib import Path
+import faulthandler
+faulthandler.enable()
 import streamlit as st
 
 import scoring
