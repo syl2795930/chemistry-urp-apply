@@ -30,6 +30,7 @@ admin_password = "관리자비밀번호"
 import io
 import re
 import base64
+import threading
 import datetime
 from zoneinfo import ZoneInfo
 import pandas as pd
@@ -41,6 +42,12 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 
 KST = ZoneInfo("Asia/Seoul")
+
+# 모든 구글드라이브 API 호출을 한 번에 하나씩만 실행하기 위한 락.
+# Drive 클라이언트(httplib2)는 스레드 안전하지 않은데, 이 앱은 st.cache_resource로 클라이언트 하나를
+# 모든 접속자가 공유한다. 지원자 여러 명이 동시에 제출하면 같은 SSL 연결을 동시에 읽다가
+# "free(): invalid size" 로 프로세스가 통째로 죽었기 때문에, 호출을 직렬화한다.
+_DRIVE_LOCK = threading.RLock()
 
 
 def now_kst() -> datetime.datetime:
@@ -225,14 +232,17 @@ def update_fields(receipt_no: str, updates: dict):
 # ── 구글드라이브 파일 저장 ──────────────────────────────────────────
 
 def _with_retry(func, tries: int = 3):
-    """구글 API 호출 중 가끔 생기는 일시적 네트워크 끊김(BrokenPipeError 등)을 흡수한다.
-    잠깐 쉬었다가 최대 tries번까지 자동으로 다시 시도. 다운로드뿐 아니라 폴더 생성/파일
-    업로드 쪽에서도 같은 종류의 오류가 나서, 아예 공용 함수로 뺐다."""
+    """구글 Drive API 호출 공용 래퍼.
+    1) 호출을 _DRIVE_LOCK으로 감싸 한 번에 하나만 실행한다 (공유 클라이언트의 스레드 충돌 방지).
+    2) 가끔 생기는 일시적 네트워크 끊김(BrokenPipeError 등)은 잠깐 쉬었다가 최대 tries번까지
+       자동으로 다시 시도한다. 재시도 대기(sleep)는 락 밖에서 해서 다른 사용자를 막지 않는다.
+    Drive 클라이언트를 쓰는 모든 호출(.execute() 등)은 반드시 이 함수를 거쳐야 한다."""
     import time
     last_err = None
     for attempt in range(tries):
         try:
-            return func()
+            with _DRIVE_LOCK:
+                return func()
         except (BrokenPipeError, ConnectionError, OSError) as e:
             last_err = e
             time.sleep(1.5 * (attempt + 1))
@@ -241,7 +251,9 @@ def _with_retry(func, tries: int = 3):
 
 def _find_or_create_subfolder(name: str, parent_id: str) -> str:
     drive = _get_drive()
-    q = (f"name = '{name}' and mimeType = 'application/vnd.google-apps.folder' "
+    # 폴더 이름에 작은따옴표가 있으면 검색식이 깨지므로 이스케이프
+    safe_name = str(name).replace("\\", "\\\\").replace("'", "\\'")
+    q = (f"name = '{safe_name}' and mimeType = 'application/vnd.google-apps.folder' "
          f"and '{parent_id}' in parents and trashed = false")
     res = _with_retry(lambda: drive.files().list(
         q=q, fields="files(id, name)",
@@ -271,29 +283,24 @@ def upload_applicant_file(round_name: str, applicant_folder_name: str, filename:
 
 def download_file_bytes_from_link(view_link: str) -> bytes:
     """webViewLink (또는 file id)로부터 파일 바이트 다운로드.
-    가끔 네트워크가 순간적으로 끊기면서(BrokenPipeError 등) 실패하는 경우가 있어,
-    그런 일시적인 오류는 잠깐 쉬었다가 최대 3번까지 자동으로 다시 시도한다."""
-    import time
+    일시적인 네트워크 오류는 _with_retry가 최대 3번까지 자동으로 다시 시도하고,
+    다운로드 전체 과정은 Drive 락 안에서 실행된다."""
+    from googleapiclient.http import MediaIoBaseDownload
     drive = _get_drive()
     file_id = view_link
     if "/d/" in view_link:
         file_id = view_link.split("/d/")[1].split("/")[0]
-    from googleapiclient.http import MediaIoBaseDownload
 
-    last_err = None
-    for attempt in range(3):
-        try:
-            request = drive.files().get_media(fileId=file_id, supportsAllDrives=True)
-            buf = io.BytesIO()
-            downloader = MediaIoBaseDownload(buf, request)
-            done = False
-            while not done:
-                _, done = downloader.next_chunk()
-            return buf.getvalue()
-        except (BrokenPipeError, ConnectionError, OSError) as e:
-            last_err = e
-            time.sleep(1.5 * (attempt + 1))
-    raise last_err
+    def _do():
+        request = drive.files().get_media(fileId=file_id, supportsAllDrives=True)
+        buf = io.BytesIO()
+        downloader = MediaIoBaseDownload(buf, request)
+        done = False
+        while not done:
+            _, done = downloader.next_chunk()
+        return buf.getvalue()
+
+    return _with_retry(_do)
 
 
 def get_file_name_from_link(view_link: str) -> str:
@@ -301,7 +308,8 @@ def get_file_name_from_link(view_link: str) -> str:
     file_id = view_link
     if "/d/" in view_link:
         file_id = view_link.split("/d/")[1].split("/")[0]
-    meta = drive.files().get(fileId=file_id, fields="name", supportsAllDrives=True).execute()
+    meta = _with_retry(lambda: drive.files().get(
+        fileId=file_id, fields="name", supportsAllDrives=True).execute())
     return meta.get("name", "file")
 
 
@@ -314,7 +322,8 @@ def _parent_folder_id_from_link(view_link: str):
     file_id = view_link
     if "/d/" in view_link:
         file_id = view_link.split("/d/")[1].split("/")[0]
-    meta = drive.files().get(fileId=file_id, fields="parents", supportsAllDrives=True).execute()
+    meta = _with_retry(lambda: drive.files().get(
+        fileId=file_id, fields="parents", supportsAllDrives=True).execute())
     parents = meta.get("parents") or []
     return parents[0] if parents else None
 
@@ -329,7 +338,8 @@ def trash_applicant_folder_by_row(row: dict):
             continue
         folder_id = _parent_folder_id_from_link(link)
         if folder_id:
-            drive.files().update(fileId=folder_id, body={"trashed": True}, supportsAllDrives=True).execute()
+            _with_retry(lambda: drive.files().update(
+                fileId=folder_id, body={"trashed": True}, supportsAllDrives=True).execute())
             return
 
 
@@ -489,4 +499,3 @@ def send_notification_email(to_addr: str, subject: str, body: str):
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
         server.login(sender, app_pw)
         server.sendmail(sender, [to_addr], msg.as_string())
-
