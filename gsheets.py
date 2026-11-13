@@ -180,19 +180,20 @@ def clear_cache():
 
 def append_applicant(row: dict) -> str:
     """
-    지원자 행을 시트에 추가하고, 실제로 저장된 행 위치를 기준으로 접수번호를 확정해서 반환한다.
+    지원자 행을 시트에 추가하고, 접수번호를 확정해서 반환한다.
 
-    기존 방식(제출 전에 '현재까지 몇 명인지 세어서 +1')은 두 학생이 거의 동시에 제출하면
-    같은 접수번호가 배정될 수 있는 문제가 있었다. 이 함수는 구글시트 append가 끝난 '이후',
-    실제로 배정된 행 번호를 기준으로 접수번호를 매기기 때문에 동시 제출에도 안전하다.
-    (구글시트 API의 append는 동시 요청이 와도 서로 다른 행을 순서대로 배정하도록 보장한다.)
+    접수번호는 '같은 회차에서 이미 쓰인 가장 큰 번호 + 1'로 매긴다.
+    (예전 방식은 같은 회차 행의 '개수'를 세서 번호를 매겼는데, 중간 행(예: 중복 지원자)을
+    삭제하면 개수가 줄어 이미 쓰인 번호가 또 배정되는 문제가 있었다.)
 
-    접수번호 형식: "26-008" (연도 뒤 2자리 + 그 회차 안에서의 순번, 3자리).
-    '프로그램구분'(예: "2027-WURF")을 기준으로 순번을 매기므로, 접수 시작 연도가 프로그램
+    두 학생이 거의 동시에 제출하는 경우: 구글시트 API의 append는 서로 다른 행을 순서대로
+    배정하므로, 이 행 '위쪽'에 있으면서 아직 접수번호가 적히지 않은 같은 회차 행(= 방금
+    동시에 제출한 다른 학생)의 수를 세어 그만큼 더해준다. 그래서 번호가 겹치지 않는다.
+
+    접수번호 형식: "27-008" (연도 뒤 2자리 + 그 회차 안에서의 순번, 3자리).
+    '프로그램구분'(예: "2027-WURF")을 기준으로 번호를 매기므로, 접수 시작 연도가 프로그램
     연도와 달라도(예: 2026년 10월에 2027 WURF 접수) 항상 정확한 회차 기준으로 번호가 매겨진다.
-    (회차가 순차적으로 진행되는 한, 같은 해에 두 회차가 동시에 겹쳐 접수번호가 헷갈릴 일은 없다.)
     """
-    import re
     ws = _get_worksheet()
     round_key = str(row.get("프로그램구분", "")) or now_kst().strftime("%Y") + "-X"
     yr_part, _, _short_part = round_key.partition("-")
@@ -206,12 +207,29 @@ def append_applicant(row: dict) -> str:
     if m:
         row_idx = int(m.group(1))
         round_col = HEADERS.index("프로그램구분") + 1
-        # 헤더(1행) 다음부터, 방금 저장된 이 행까지의 '프로그램구분' 값을 읽어 같은 회차만 센다.
-        # append가 끝난 시점에는 이 행 값도 이미 저장돼 있으므로 동시 제출이어도 안전하게 카운트된다.
-        rounds_so_far = ws.col_values(round_col)[1:row_idx]
-        seq = sum(1 for r in rounds_so_far if str(r) == round_key) or 1
+        no_col = HEADERS.index("접수번호") + 1
+
+        # 이 행 '위쪽'(2행 ~ row_idx-1행)만 본다.
+        # 열마다 끝의 빈 칸이 잘려서 길이가 다를 수 있어, 같은 길이로 맞춰서 비교한다.
+        n = max(row_idx - 2, 0)
+        rounds = (ws.col_values(round_col)[1:1 + n] + [""] * n)[:n]
+        nos = (ws.col_values(no_col)[1:1 + n] + [""] * n)[:n]
+
+        pat = re.compile(rf"^{re.escape(prefix)}-(\d+)$")
+        max_no = 0
+        pending = 0  # 같은 회차인데 아직 접수번호가 안 적힌 행(동시에 제출 중인 다른 학생)
+        for r, no in zip(rounds, nos):
+            if str(r) != round_key:
+                continue
+            mm = pat.match(str(no).strip())
+            if mm:
+                max_no = max(max_no, int(mm.group(1)))
+            elif not str(no).strip():
+                pending += 1
+
+        seq = max_no + pending + 1
         receipt_no = f"{prefix}-{seq:03d}"
-        ws.update_cell(row_idx, HEADERS.index("접수번호") + 1, receipt_no)
+        ws.update_cell(row_idx, no_col, receipt_no)
     return receipt_no
 
 
