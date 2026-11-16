@@ -122,7 +122,26 @@ def page_status():
             phone_last4 = st.text_input("휴대전화 뒤 4자리", max_chars=4,
                                         placeholder="예) 0123", key="status_phone_last4",
                                         autocomplete="off")
-            check = st.form_submit_button("접수 확인", type="primary", use_container_width=True)
+            with st.container(key="status_submit_wrap"):
+                check = st.form_submit_button("접수 확인", type="secondary", use_container_width=True)
+        # 이 버튼에는 기존 사이트의 자주색을 직접 적용한다.
+        # Streamlit의 기본 primary 색상과 충돌하지 않도록 전용 컨테이너로 범위를 한정한다.
+        theme.inject_css(
+            '.st-key-status_submit_wrap button {'
+            f'background-color:{config.BRAND["primary"]} !important; '
+            f'border-color:{config.BRAND["primary"]} !important; '
+            'color:#fff !important; border-radius:8px !important; }'
+            '.st-key-status_submit_wrap button p {'
+            'color:#fff !important; font-weight:600 !important; }'
+            '.st-key-status_submit_wrap button:hover, '
+            '.st-key-status_submit_wrap button:focus, '
+            '.st-key-status_submit_wrap button:active {'
+            f'background-color:{config.BRAND["primary_dark"]} !important; '
+            f'border-color:{config.BRAND["primary_dark"]} !important; color:#fff !important; }}'
+            '.st-key-status_submit_wrap button:focus-visible {'
+            f'outline:2px solid {config.BRAND["primary_light"]} !important; '
+            'outline-offset:2px; box-shadow:none !important; }'
+        )
         st.caption("현재 모집 회차의 제출 여부만 확인할 수 있습니다. "
                    "제출 직후에는 조회 결과에 반영되기까지 약 15초 정도 걸릴 수 있습니다.")
 
@@ -179,11 +198,21 @@ def page_labs():
 
 
 # ══════════════════════════ FAQ ══════════════════════════
+def _public_faq_items():
+    """공개 FAQ에서 지정된 질문·답변 한 항목을 제외한다."""
+    excluded_question = "졸업유예상태인데지원할수있나요"
+    return [
+        item for item in config.FAQ_ITEMS
+        if re.sub(r"\s+", "", html.unescape(str(item.get("q", "")))).rstrip("?？")
+        != excluded_question
+    ]
+
+
 def page_faq():
     st.header("FAQ · Q&A")
     st.caption("자주 묻는 질문과, 지원자분들이 남긴 문의를 한 페이지에서 확인하실 수 있어요.")
 
-    theme.faq_accordion(config.FAQ_ITEMS)
+    theme.faq_accordion(_public_faq_items())
 
 @st.dialog("문의 작성하기")
 def _qna_write_dialog():
@@ -226,7 +255,7 @@ def page_faq():
     st.header("FAQ · Q&A")
     st.caption("자주 묻는 질문과, 지원자분들이 남긴 문의를 한 페이지에서 확인하실 수 있어요.")
 
-    theme.faq_accordion(config.FAQ_ITEMS)
+    theme.faq_accordion(_public_faq_items())
 
     qc1, qc2 = st.columns([3, 1])
     with qc1:
