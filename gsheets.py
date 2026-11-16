@@ -32,6 +32,13 @@ import re
 import base64
 import threading
 import datetime
+import hashlib
+import hmac
+import math
+import secrets
+import time
+import unicodedata
+from collections import deque
 from zoneinfo import ZoneInfo
 import pandas as pd
 import streamlit as st
@@ -82,6 +89,183 @@ HEADERS = [
     "서류확인_AI",
     "영어성적",  # 마찬가지로 기존 행 열 위치 유지를 위해 맨 끝에 추가
 ]
+
+
+# ── 공개 화면의 접수 여부 조회 (읽기 전용) ──────────────────────────
+# 조회에는 이름·전화번호·회차·접수 여부만 필요하다. 기존 _get_worksheet()는
+# 헤더를 수정하거나 시트를 만들 수 있으므로, 아래 경로에서는 사용하지 않는다.
+_SUBMISSION_LOOKUP_TTL = 15
+_SUBMISSION_LOOKUP_LOCK = threading.RLock()
+_SUBMISSION_LOOKUP_CACHE = {"rows": (), "expires_at": 0.0, "failure_until": 0.0}
+_SUBMISSION_LOOKUP_RATE_LOCK = threading.Lock()
+_SUBMISSION_LOOKUP_RATE_SECRET = secrets.token_bytes(32)
+_SUBMISSION_LOOKUP_NAME_WINDOW = 600
+_SUBMISSION_LOOKUP_NAME_LIMIT = 5
+_SUBMISSION_LOOKUP_GLOBAL_WINDOW = 60
+_SUBMISSION_LOOKUP_GLOBAL_LIMIT = 60
+_SUBMISSION_LOOKUP_MAX_NAMES = 2000
+_SUBMISSION_LOOKUP_NAME_REQUESTS = {}
+_SUBMISSION_LOOKUP_GLOBAL_REQUESTS = deque()
+
+
+class SubmissionLookupUnavailable(RuntimeError):
+    """시트 연결·구조 등의 문제로 조회 결과를 확정할 수 없음."""
+
+
+class SubmissionLookupRateLimited(RuntimeError):
+    """서버에서 집계한 조회 횟수 제한. retry_after는 다시 시도할 때까지의 초."""
+
+    def __init__(self, retry_after=60):
+        self.retry_after = max(1, int(math.ceil(retry_after)))
+        super().__init__("조회 요청이 많습니다. 잠시 후 다시 확인해 주세요.")
+
+
+def _normalise_submission_name(value):
+    return "".join(unicodedata.normalize("NFKC", str(value)).split()).casefold()
+
+
+def _check_submission_lookup_rate(round_key, normalised_name):
+    """모든 브라우저 세션이 공유하는 프로세스 단위 제한. 재시작 시 초기화됨.
+
+    이름을 바꾸며 반복 조회하는 요청은 전체 상한으로 제한한다. 이름은 평문 대신
+    프로세스별 비밀값으로 만든 해시를 잠시 보관하며, 제한 내역을 시트에 쓰지 않는다.
+    여러 서버를 사용하는 경우에는 서버 간 공유되는 제한 장치가 별도로 필요하다.
+    """
+    now = time.monotonic()
+    key = hmac.new(
+        _SUBMISSION_LOOKUP_RATE_SECRET,
+        (round_key + "\0" + normalised_name).encode("utf-8"),
+        hashlib.sha256,
+    ).digest()
+    with _SUBMISSION_LOOKUP_RATE_LOCK:
+        name_cutoff = now - _SUBMISSION_LOOKUP_NAME_WINDOW
+        for old_key, requests in list(_SUBMISSION_LOOKUP_NAME_REQUESTS.items()):
+            if not requests or requests[-1] <= name_cutoff:
+                del _SUBMISSION_LOOKUP_NAME_REQUESTS[old_key]
+        global_requests = _SUBMISSION_LOOKUP_GLOBAL_REQUESTS
+        global_cutoff = now - _SUBMISSION_LOOKUP_GLOBAL_WINDOW
+        while global_requests and global_requests[0] <= global_cutoff:
+            global_requests.popleft()
+        name_requests = _SUBMISSION_LOOKUP_NAME_REQUESTS.get(key)
+        if name_requests is not None:
+            while name_requests and name_requests[0] <= name_cutoff:
+                name_requests.popleft()
+
+        retry_after = 0
+        if len(global_requests) >= _SUBMISSION_LOOKUP_GLOBAL_LIMIT:
+            retry_after = global_requests[0] + _SUBMISSION_LOOKUP_GLOBAL_WINDOW - now
+        if name_requests is not None and len(name_requests) >= _SUBMISSION_LOOKUP_NAME_LIMIT:
+            retry_after = max(
+                retry_after, name_requests[0] + _SUBMISSION_LOOKUP_NAME_WINDOW - now
+            )
+        if name_requests is None and len(_SUBMISSION_LOOKUP_NAME_REQUESTS) >= _SUBMISSION_LOOKUP_MAX_NAMES:
+            # 사용 중인 항목을 임의로 버리면 횟수 제한을 우회할 수 있어 새 요청을 제한한다.
+            retry_after = max(retry_after, min(
+                requests[-1] + _SUBMISSION_LOOKUP_NAME_WINDOW - now
+                for requests in _SUBMISSION_LOOKUP_NAME_REQUESTS.values()
+            ))
+        if retry_after > 0:
+            raise SubmissionLookupRateLimited(retry_after)
+        if name_requests is None:
+            name_requests = deque()
+            _SUBMISSION_LOOKUP_NAME_REQUESTS[key] = name_requests
+        name_requests.append(now)
+        global_requests.append(now)
+
+
+@st.cache_resource(show_spinner=False)
+def _get_submission_lookup_client():
+    """기존 제출용 클라이언트와 연결·자격증명 객체를 분리한 읽기 전용 클라이언트."""
+    info = dict(st.secrets["gcp_service_account"])
+    creds = Credentials.from_service_account_info(
+        info, scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"]
+    )
+    gc = gspread.authorize(creds)
+    # 설치된 gspread에서 제공하는 경우 조회 연결의 대기 시간도 제한한다.
+    set_timeout = getattr(gc, "set_timeout", None)
+    if callable(set_timeout):
+        set_timeout(15)
+    return gc
+
+
+def _read_submission_lookup_rows():
+    """최소 열만 서버 메모리에 15초 보관. 원본 파일·이메일·심사 정보는 읽지 않음."""
+    if not _SUBMISSION_LOOKUP_LOCK.acquire(timeout=5):
+        raise SubmissionLookupUnavailable("현재 접수 기록을 확인할 수 없습니다.")
+    try:
+        now = time.monotonic()
+        if now < _SUBMISSION_LOOKUP_CACHE["expires_at"]:
+            return _SUBMISSION_LOOKUP_CACHE["rows"]
+        if now < _SUBMISSION_LOOKUP_CACHE["failure_until"]:
+            raise SubmissionLookupUnavailable("현재 접수 기록을 확인할 수 없습니다.")
+        try:
+            gc = _get_submission_lookup_client()
+            sh = gc.open_by_key(st.secrets["app"]["sheet_id"])
+            ws = sh.worksheet(WORKSHEET_NAME)
+            parts = ws.batch_get(["A:D", "H:H"], value_render_option="FORMATTED_VALUE")
+            if len(parts) != 2:
+                raise ValueError("Unexpected lookup column count")
+            identifiers, phones = parts
+            if (not identifiers or list(identifiers[0]) != HEADERS[:4]
+                    or not phones or list(phones[0]) != ["휴대폰번호"]):
+                raise ValueError("Unexpected lookup headers")
+            rows = []
+            for index, cells in enumerate(identifiers[1:], start=1):
+                fields = (list(cells) + [""] * 4)[:4]
+                phone_cell = phones[index][0] if index < len(phones) and phones[index] else ""
+                phone = re.sub(r"[^0-9]", "", str(phone_cell))
+                name = _normalise_submission_name(fields[3])
+                round_key = str(fields[2]).strip()
+                if round_key and name and re.fullmatch(r"01[0-9]{8,9}", phone):
+                    # 접수번호 원문·제출일시는 캐시에 넣지 않고 번호 확정 여부만 보관한다.
+                    rows.append((round_key, name, phone, bool(str(fields[0]).strip())))
+            _SUBMISSION_LOOKUP_CACHE.update(
+                rows=tuple(rows), expires_at=time.monotonic() + _SUBMISSION_LOOKUP_TTL,
+                failure_until=0.0,
+            )
+            return _SUBMISSION_LOOKUP_CACHE["rows"]
+        except Exception:
+            # 장애를 '미접수'로 오인하지 않도록 구분하고, 짧은 장애 재시도 대기를 둔다.
+            _SUBMISSION_LOOKUP_CACHE.update(
+                rows=(), expires_at=0.0, failure_until=time.monotonic() + 5
+            )
+            raise SubmissionLookupUnavailable("현재 접수 기록을 확인할 수 없습니다.") from None
+    finally:
+        _SUBMISSION_LOOKUP_LOCK.release()
+
+
+def _invalidate_submission_lookup_cache():
+    with _SUBMISSION_LOOKUP_LOCK:
+        _SUBMISSION_LOOKUP_CACHE.update(rows=(), expires_at=0.0, failure_until=0.0)
+
+
+def lookup_application_status(round_key, name, phone_last4):
+    """현재 회차에서 이름·휴대폰 뒤 4자리가 일치하는 접수 기록의 상태만 반환.
+
+    submitted: 접수번호가 확정된 일치 기록 있음.
+    not_found: 일치 기록 없음. ambiguous: 서로 다른 전체 전화번호가 일치함.
+    pending: 일치 기록은 있으나 접수번호가 아직 확정되지 않음.
+    동일 전화번호의 중복지원은 한 건이라도 확정되어 있으면 submitted로 처리한다.
+    이름과 뒤 4자리는 강한 본인 인증 수단이 아니므로 상세 정보 열람에는 사용하지 않는다.
+    """
+    round_key = str(round_key).strip()
+    raw_name = str(name).strip()
+    phone_last4 = str(phone_last4).strip()
+    normalised_name = _normalise_submission_name(raw_name)
+    if (not round_key or len(round_key) > 80 or not normalised_name
+            or len(raw_name) > 80 or not re.fullmatch(r"[0-9]{4}", phone_last4)):
+        raise ValueError("회차, 이름, 휴대폰번호 뒤 4자리를 확인해 주세요.")
+    _check_submission_lookup_rate(round_key, normalised_name)
+    matches = [
+        (phone, submitted) for stored_round, stored_name, phone, submitted
+        in _read_submission_lookup_rows()
+        if stored_round == round_key and stored_name == normalised_name and phone.endswith(phone_last4)
+    ]
+    if not matches:
+        return "not_found"
+    if len({phone for phone, _ in matches}) > 1:
+        return "ambiguous"
+    return "submitted" if any(submitted for _, submitted in matches) else "pending"
 
 
 @st.cache_resource(show_spinner=False)
@@ -176,6 +360,7 @@ def read_all_df() -> pd.DataFrame:
 def clear_cache():
     """지원자 정보를 수정/삭제한 직후 등, 방금 바뀐 내용을 바로 화면에 반영해야 할 때 호출."""
     read_all_df.clear()
+    _invalidate_submission_lookup_cache()
 
 
 def append_applicant(row: dict) -> str:

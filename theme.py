@@ -217,7 +217,7 @@ def top_nav_simple(active_key: str) -> tuple:
     화면이 중간부터 보이는 것처럼 느껴진다."""
     b = config.BRAND
     with st.container(key="topbar_row"):
-        title_col, c2, c3, c4, c5 = st.columns([2.3, 0.62, 0.55, 0.4, 0.62], gap="small")
+        title_col, c2, status_col, c3, c4, c5 = st.columns([2.3, 0.62, 0.68, 0.55, 0.4, 0.62], gap="small")
         clicked = active_key
         nav_pressed = False
         with title_col:
@@ -227,6 +227,10 @@ def top_nav_simple(active_key: str) -> tuple:
         with c2:
             if st.button("지원하기", key="nav_apply", type=("primary" if active_key == "apply" else "secondary")):
                 clicked = "apply"
+                nav_pressed = True
+        with status_col:
+            if st.button("접수 확인", key="nav_status", type=("primary" if active_key == "status" else "secondary")):
+                clicked = "status"
                 nav_pressed = True
         with c3:
             if st.button("연구실", key="nav_labs", type=("primary" if active_key == "labs" else "secondary")):
@@ -276,6 +280,26 @@ def top_nav_simple(active_key: str) -> tuple:
         "padding:3px 12px !important; }"
         '.st-key-topbar_row.st-key-topbar_row div[data-testid="stHorizontalBlock"] > div:last-child button p {'
         f"color:{b['primary']} !important; font-weight:600 !important; font-size:13px !important; }}"
+        # 좁은 화면에서는 제목을 먼저 배치하고 메뉴는 공간에 맞춰 줄바꿈한다.
+        # topbar_row 안에만 적용하여 지원서·관리자 화면의 다른 columns에는 영향을 주지 않는다.
+        "@media (max-width:760px) {"
+        '.st-key-topbar_row div[data-testid="stHorizontalBlock"] {'
+        "flex-wrap:wrap !important; gap:4px !important; }"
+        '.st-key-topbar_row div[data-testid="stHorizontalBlock"] > div {'
+        "flex:1 1 60px !important; min-width:0 !important; width:auto !important; }"
+        '.st-key-topbar_row div[data-testid="stHorizontalBlock"] > div:first-child {'
+        "flex:1 0 100% !important; }"
+        '.st-key-topbar_row div[data-testid="stHorizontalBlock"] > div:last-child {'
+        "flex:0 0 auto !important; }"
+        '.st-key-topbar_row.st-key-topbar_row button[kind] p {'
+        "font-size:13px !important; white-space:nowrap; }"
+        '.st-key-topbar_row.st-key-topbar_row div[data-testid="stHorizontalBlock"] > div:first-child button {'
+        "background-size:30px 30px !important; padding-left:38px !important; }"
+        '.st-key-topbar_row.st-key-topbar_row div[data-testid="stHorizontalBlock"] > div:first-child button p {'
+        "font-size:16px !important; white-space:normal; }"
+        '.st-key-topbar_row.st-key-topbar_row div[data-testid="stHorizontalBlock"] > div:last-child button {'
+        "padding:3px 6px !important; }"
+        "}"
         "</style>"
     )
     return clicked, sub_clicked, nav_pressed

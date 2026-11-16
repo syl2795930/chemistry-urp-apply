@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-지원자용 공개 앱 (홈 + 지원하기 + 연구실 소개 + FAQ)
+지원자용 공개 앱 (홈 + 지원하기 + 접수 확인 + 연구실 소개 + FAQ)
 이 파일은 카페/학과 홈페이지 등 '공개 링크'로 배포하는 용도입니다.
 관리자 기능은 이 앱에 전혀 포함되어 있지 않습니다. (admin_app.py 참고)
 
@@ -101,6 +101,76 @@ def page_home():
     theme.notice_detail_card(p, config.NOTICE_DETAIL)
     theme.notice_board(config.NOTICES, p)
     theme.program_history_table(config.PAST_PROGRAMS)
+
+
+# ══════════════════════════ 접수 확인 ══════════════════════════
+def page_status():
+    """현재 회차의 제출 여부만 조회한다. 지원서 내용이나 파일은 읽어오지 않는다."""
+    st.header("접수 확인")
+    theme.program_badge(config.PROGRAM["round_key"])
+
+    # 교체 과정에서 이전 gsheets.py가 잠시 남아 있어도 지원 화면에 영향을 주지 않는다.
+    if not callable(getattr(gsheets, "lookup_application_status", None)):
+        st.info("접수 확인 기능을 준비하고 있습니다. 잠시 후 다시 확인해주세요.")
+        return
+
+    with st.container(key="apply_box"):
+        st.write("지원서 제출 당시의 이름과 휴대전화 뒤 4자리를 입력해주세요.")
+        with st.form("submission_status_form", border=False):
+            name = st.text_input("이름", max_chars=80, placeholder="예) 홍길동",
+                                 key="status_name", autocomplete="off")
+            phone_last4 = st.text_input("휴대전화 뒤 4자리", max_chars=4,
+                                        placeholder="예) 0123", key="status_phone_last4",
+                                        autocomplete="off")
+            check = st.form_submit_button("접수 확인", type="primary", use_container_width=True)
+        st.caption("현재 모집 회차의 제출 여부만 확인할 수 있습니다. "
+                   "제출 직후에는 조회 결과에 반영되기까지 약 15초 정도 걸릴 수 있습니다.")
+
+        if not check:
+            return
+        name = name.strip()
+        phone_last4 = phone_last4.strip()
+        if not name or len(name) > 80:
+            st.warning("지원서에 작성한 이름을 입력해주세요.")
+            return
+        if not re.fullmatch(r"[0-9]{4}", phone_last4):
+            st.warning("휴대전화 뒤 4자리를 숫자로 입력해주세요. 앞자리가 0이면 0도 입력해주세요.")
+            return
+
+        try:
+            with st.spinner("접수 내역을 확인하고 있습니다..."):
+                result = gsheets.lookup_application_status(
+                    config.PROGRAM["round_key"], name, phone_last4)
+        except gsheets.SubmissionLookupRateLimited as exc:
+            seconds = max(1, int(getattr(exc, "retry_after", 60)))
+            minutes = max(1, (seconds + 59) // 60)
+            st.warning(f"조회 요청이 많습니다. 약 {minutes}분 후 다시 확인해주세요.")
+            return
+        except ValueError:
+            st.warning("이름과 휴대전화 뒤 4자리의 입력 형식을 확인해주세요.")
+            return
+        except Exception:
+            # 저장소 오류를 '미접수'로 표시하거나 내부 예외 내용을 노출하지 않는다.
+            st.error("현재 접수 내역을 조회할 수 없습니다. 잠시 후 다시 확인해주세요.")
+            st.caption(f"오류가 계속되면 담당자({CONTACT_INFO})에게 문의해주세요.")
+            return
+
+        if result == "submitted":
+            st.success("지원서가 정상적으로 접수되었습니다.")
+            st.caption("이 결과는 지원서 제출 여부에 대한 안내이며, 심사 결과는 별도로 안내됩니다.")
+        elif result == "not_found":
+            st.info("입력하신 정보와 일치하는 접수 내역을 찾지 못했습니다. "
+                    "지원서에 작성한 이름과 휴대전화 뒤 4자리를 확인해주세요.")
+            st.caption(f"방금 제출하셨다면 잠시 후 다시 조회해주세요. 이미 제출했는데도 확인되지 않으면 "
+                       f"다시 제출하기 전에 담당자({CONTACT_INFO})에게 문의해주세요.")
+        elif result == "pending":
+            st.info("접수 기록은 있으나 최종 접수 상태 확인이 필요합니다. 잠시 후 다시 조회해주세요.")
+            st.caption(f"같은 안내가 계속되면 다시 제출하기 전에 담당자({CONTACT_INFO})에게 문의해주세요.")
+        elif result == "ambiguous":
+            st.info("입력하신 정보만으로는 접수 내역을 정확히 확인하기 어렵습니다.")
+            st.caption(f"담당자({CONTACT_INFO})에게 접수 확인을 요청해주세요.")
+        else:
+            st.error("현재 접수 내역을 조회할 수 없습니다. 잠시 후 다시 확인해주세요.")
 
 
 # ══════════════════════════ 연구실 소개 ══════════════════════════
@@ -673,6 +743,8 @@ if st.session_state.get("_last_view") != view or st.session_state.pop("_force_sc
 
 if view == "apply":
     page_apply()
+elif view == "status":
+    page_status()
 elif view == "labs":
     page_labs()
 elif view == "faq":
