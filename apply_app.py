@@ -61,9 +61,6 @@ def _subscribe_dialog():
         sub_email = st.text_input("이메일", placeholder="example@school.ac.kr")
         sub_research = st.checkbox("연구참여 프로그램(SURF/WURF) 관련 소식 받기")
         sub_admission = st.checkbox("화학과 입시(설명회 등) 관련 정보 받기")
-        # type="primary"로 Streamlit 기본 테마 색과 계속 충돌하던 문제를 피하려고,
-        # 이 프로젝트에서 계속 안정적으로 먹혔던 '이름표 붙은 상자로 감싸서 그 이름표로
-        # 스타일 주기' 방식으로 바꿨다. type은 기본값(secondary)으로 두고 색은 직접 입힌다.
         with st.container(key="subscribe_submit_wrap"):
             sub_submit = st.form_submit_button("신청", use_container_width=True)
     theme.inject_css(
@@ -109,7 +106,6 @@ def page_status():
     st.header("접수 확인")
     theme.program_badge(config.PROGRAM["round_key"])
 
-    # 교체 과정에서 이전 gsheets.py가 잠시 남아 있어도 지원 화면에 영향을 주지 않는다.
     if not callable(getattr(gsheets, "lookup_application_status", None)):
         st.info("접수 확인 기능을 준비하고 있습니다. 잠시 후 다시 확인해주세요.")
         return
@@ -124,8 +120,6 @@ def page_status():
                                         autocomplete="off")
             with st.container(key="status_submit_wrap"):
                 check = st.form_submit_button("접수 확인", type="secondary", use_container_width=True)
-        # 이 버튼에는 기존 사이트의 자주색을 직접 적용한다.
-        # Streamlit의 기본 primary 색상과 충돌하지 않도록 전용 컨테이너로 범위를 한정한다.
         theme.inject_css(
             '.st-key-status_submit_wrap button {'
             f'background-color:{config.BRAND["primary"]} !important; '
@@ -169,7 +163,6 @@ def page_status():
             st.warning("이름과 휴대전화 뒤 4자리의 입력 형식을 확인해주세요.")
             return
         except Exception:
-            # 저장소 오류를 '미접수'로 표시하거나 내부 예외 내용을 노출하지 않는다.
             st.error("현재 접수 내역을 조회할 수 없습니다. 잠시 후 다시 확인해주세요.")
             st.caption(f"오류가 계속되면 담당자({CONTACT_INFO})에게 문의해주세요.")
             return
@@ -211,8 +204,8 @@ def _public_faq_items():
 def page_faq():
     st.header("FAQ · Q&A")
     st.caption("자주 묻는 질문과, 지원자분들이 남긴 문의를 한 페이지에서 확인하실 수 있어요.")
-
     theme.faq_accordion(_public_faq_items())
+
 
 @st.dialog("문의 작성하기")
 def _qna_write_dialog():
@@ -245,10 +238,10 @@ def _qna_write_dialog():
                     "관리자 화면의 '문의(Q&A) 답변' 탭에서 답변해주세요.",
                 )
             except Exception:
-                pass  # 알림 메일은 부가 기능이므로 실패해도 문의 등록 자체는 정상 처리
-            st.session_state["q_form_gen"] += 1  # 다음부터는 새 위젯이라 확실히 비워져 있음
+                pass
+            st.session_state["q_form_gen"] += 1
             st.session_state["q_submitted_ok"] = True
-            st.rerun()  # 다이얼로그 밖(전체 스크립트) 재실행 -> 팝업이 자동으로 닫힘
+            st.rerun()
 
 
 def page_faq():
@@ -351,6 +344,11 @@ def page_apply():
     st.header("지원서 작성")
     theme.program_badge(config.PROGRAM["round_key"])
 
+    # 제출 처리 중인 세션은 지원서 폼을 다시 실행하지 않는다.
+    if st.session_state.get("is_submitting", False):
+        st.info("지원서 제출 처리 중입니다. 잠시만 기다려주세요.")
+        return
+
     # 접수 마감 시각(한국시간 기준)이 지났으면, 폼을 아예 그리지 않고 마감 안내만 보여준다.
     now_kst = datetime.datetime.now(config.KST)
     deadline_dt = config.PROGRAM.get("deadline_dt")
@@ -364,13 +362,6 @@ def page_apply():
             )
         return
 
-    # 작성 전에 미리 알아두면 좋은 것들(마감일, 긴 답변 작성 팁, 문의처)을 맨 위에 한 번에 모아둔다.
-    # (예전엔 마감 임박 안내는 제출 버튼 옆에, 긴 글 작성 팁은 자기소개 칸 옆에 따로 흩어져
-    # 있었는데, 작성을 시작하기 전에 미리 알아야 도움이 되는 내용들이라 맨 위로 옮겼다.)
-    # st.info 기본 스타일(파란 박스, 큰 글씨)이 이 사이트의 톤(자주색 계열)과 안 어울리고 성겨
-    # 보여서, 다른 카드들과 같은 스타일(흰 배경+옅은 테두리)의 작은 글씨 박스로 직접 만들었다.
-    # 각 줄은 아이콘과 글자를 별도 칸(flex)으로 나눠서, 문장이 길어져 줄바꿈되어도 둘째 줄이
-    # 아이콘 밑이 아니라 글자 시작 위치에 맞춰 정렬되게 했다(들쭉날쭉해 보이는 것 방지).
     b = config.BRAND
     st.markdown(
         f'<div style="background:#fff;border:1px solid {b["primary_light"]};border-radius:10px;'
@@ -471,12 +462,6 @@ def page_apply():
                 with tc5:
                     t_gpa = st.text_input("전적 평점", placeholder="예) 3.953")
 
-            # 영어 성적 — 드롭다운으로 시험 종류를 미리 정해두는 것보다, 그냥 두 칸(시험 종류/
-            # 점수·등급)에 자유롭게 입력받는 쪽이 낫겠다고 해서 단순화. "없음" 체크박스를 누르면
-            # 칸들을 안 채워도 된다. 토플+아이엘츠처럼 여러 시험 성적을 같이 가진 경우도 있어서,
-            # 최대 3개까지 적을 수 있게 칸을 늘렸다(폼 안에서는 "칸 추가" 버튼이 눌러도 바로바로
-            # 새 칸이 생기지 않아서 — 폼 제출 전엔 화면이 안 새로고침됨 — 처음부터 3칸을 준비해두는
-            # 쪽이 안전하다). 1번째만 필수, 2·3번째는 있으면만 채우면 된다.
             st.markdown("영어 성적 *")
             eng_none = st.checkbox("해당 없음 (영어 성적 없음)", key="eng_none")
             st.caption("취득한 영어 성적이 여러 개라면 아래에 최대 3개까지 적을 수 있어요. "
@@ -544,7 +529,12 @@ def page_apply():
             consent_required = st.radio("개인정보 수집·이용에 동의합니다 *", ["예", "아니오"], horizontal=True, index=None)
 
             with st.container(key="submit_btn_wrap"):
-                submitted = st.form_submit_button("지원서 제출", use_container_width=True, type="primary")
+                submitted = st.form_submit_button(
+                    "지원서 제출",
+                    use_container_width=True,
+                    type="primary",
+                    disabled=st.session_state.get("is_submitting", False)
+                )
             theme.inject_css(
                 '.st-key-submit_btn_wrap button {'
                 f'background-color:{config.BRAND["primary"]} !important; '
@@ -611,15 +601,18 @@ def page_apply():
         st.error("다음 항목을 확인해주세요: " + ", ".join(required_missing))
         return
 
+    # 제출 처리 시작 전 중복 실행 여부를 확인하고 잠금 상태로 전환한다.
+    if st.session_state.get("is_submitting", False):
+        return
+    st.session_state["is_submitting"] = True
+
     with st.spinner("제출 처리 중입니다... (파일 업로드에 시간이 걸릴 수 있어요)"):
         try:
-            # 회차별 상위 폴더 (예: "2026_SURF") - 구글드라이브 안에서 회차별로 자동으로 나뉩니다.
             round_name = config.PROGRAM["round_key"]
 
             def _short_prof(p):
                 return str(p).split(" 교수님")[0].strip()
 
-            # 지원자 폴더명: "이름_1.교수님_2.교수님" + 동명이인 방지용 짧은 시각 태그
             folder_key = (f"{name_kr}_1.{_short_prof(prof1)}_2.{_short_prof(prof2)}"
                           f"_{gsheets.now_kst().strftime('%H%M%S')}")
 
@@ -649,7 +642,6 @@ def page_apply():
                 "편입_대학군": t_group, "편입_4.3환산": t_score43, "편입_환산성적": t_grade,
             }
 
-            # 파일 업로드 (구글드라이브)
             transcript_bytes_list = [_read_bytes(f) for f in f_transcript]
             enrollment_bytes = _read_bytes(f_enrollment)
             photo_bytes = _read_bytes(f_photo)
@@ -665,10 +657,6 @@ def page_apply():
             row["재학증명서_링크"] = gsheets.upload_applicant_file(
                 round_name, folder_key, f"재학증명서{Path(f_enrollment.name).suffix}", enrollment_bytes, _mime_of(f_enrollment))
 
-            # 제출과 동시에 AI로 서류(성적증명서·재학증명서)를 확인해서 결과를 저장해둔다.
-            # (관리자가 나중에 한 명씩 눌러서 확인할 필요 없이, 확인이 필요한 사람만 바로 걸러낼 수 있게)
-            # 학교명은 성적증명서·재학증명서 중 어디에든 있으면 되도록, 텍스트를 합쳐서 한 번에 검사한다
-            # (편입생처럼 성적증명서가 여러 장이면 그것도 다 합친다).
             doc_notes = []
             doc_check_failed = False
             try:
@@ -678,9 +666,6 @@ def page_apply():
                 doc_notes = scoring.check_documents_combined(
                     {"성적증명서": transcript_text, "재학증명서": enrollment_text}, school, gpa)
             except Exception:
-                # AI 확인은 부가 기능이므로, 실패해도 접수 자체는 정상 진행한다.
-                # 다만 "검사했는데 문제없음"과 "애초에 검사가 안 됨(예: 결제 미설정)"은 구분해서
-                # 저장한다 — 안 그러면 관리자 화면에서 둘 다 '확인완료'로 보여서 놓치기 쉽다.
                 doc_check_failed = True
             if doc_check_failed:
                 row["서류확인_AI"] = "미확인(검사 실패)"
@@ -704,16 +689,12 @@ def page_apply():
             row["접수번호"] = receipt_no
 
             try:
-                # 관리자 보관용(구글드라이브 병합본)에는 접수번호를 남기고,
                 admin_pdf = pdf_gen.generate_application_pdf(row, photo_bytes=photo_bytes, show_receipt_no=True)
-                # 학생이 화면에서 바로 보는 PDF에는 접수번호를 빼서 몇 번째 지원자인지 유추할 수 없게 한다.
                 student_pdf = pdf_gen.generate_application_pdf(row, photo_bytes=photo_bytes, show_receipt_no=False)
             except Exception:
                 admin_pdf = None
                 student_pdf = None
 
-            # 표지 + 성적증명서 + 재학증명서 + 기타증빙을 하나로 병합해서 드라이브에도 저장
-            # (관리자님이 매번 화면에서 따로 생성 안 해도, 폴더에서 바로 받을 수 있게)
             if admin_pdf:
                 try:
                     merged_pdf = pdf_gen.merge_pdfs(
@@ -722,7 +703,9 @@ def page_apply():
                         round_name, folder_key, "지원서_전체(병합본).pdf", merged_pdf, "application/pdf")
                 except Exception:
                     pass
-        except Exception as e:
+        except Exception:
+            # 제출 실패 시 잠금 해제하여 재시도할 수 있도록 한다.
+            st.session_state["is_submitting"] = False
             st.error(
                 "제출 처리 중 오류가 발생했습니다. 입력하신 내용은 유지되니 잠시 후 다시 [지원서 제출] "
                 "버튼을 눌러 다시 시도해주세요. 계속 오류가 발생하면 담당자(신유리, syuri@postech.ac.kr, "
@@ -730,6 +713,8 @@ def page_apply():
             )
             return
 
+    # 제출 성공 후 잠금 해제 및 완료 화면 표시
+    st.session_state["is_submitting"] = False
     st.session_state["submitted_ok"] = True
     st.session_state["submitted_pdf"] = student_pdf
     st.session_state["submitted_name"] = name_kr
@@ -749,22 +734,15 @@ if st.query_params.get("nav") == "home":
 new_view, sub_clicked, nav_pressed = theme.top_nav_simple(st.session_state["view"])
 if new_view != st.session_state["view"]:
     if new_view == "apply":
-        # '지원하기' 탭을 새로 눌러서 들어올 때는 완료 화면을 초기화해서 새 폼이 뜨게 한다.
-        # (중복 지원은 관리자 화면에서 골라 지울 수 있으니, 여기서 막지는 않는다)
         st.session_state["submitted_ok"] = False
     st.session_state["view"] = new_view
     st.rerun()
 elif nav_pressed:
-    # 이미 활성화된 탭을 다시 눌렀을 때 — 뷰는 안 바뀌지만, 아래로 스크롤해둔 상태였다면
-    # 화면이 중간부터 보이는 것처럼 보이니 이때도 맨 위로 스크롤시킨다.
     st.session_state["_force_scroll_top"] = True
 if sub_clicked:
     _subscribe_dialog()
 
 view = st.session_state["view"]
-# 화면을 맨 위로 올리는 스크립트는 페이지 내용을 다 그린 "맨 끝"에서 실행한다.
-# (맨 앞에서 실행하면, 제출 후 화면이 완료 카드로 바뀔 때 Streamlit이 이전 입력폼을 지우지 못하고
-#  그대로 남겨두는 문제가 있었다 — 완료 카드가 폼 아래로 밀려 맨 밑에 보이던 현상)
 _need_scroll_top = False
 if st.session_state.get("_last_view") != view or st.session_state.pop("_force_scroll_top", False):
     _need_scroll_top = True
